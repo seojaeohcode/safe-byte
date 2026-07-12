@@ -1,0 +1,20 @@
+.git
+.pytest_cache
+__pycache__
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.env
+.env.*
+!.env.example
+logs/*
+data/*.sqlite3
+data/*.sqlite3-*
+data/selected_ocr_samples
+_debug_images
+상품 이미지
+상품 이미지/Validation
+상품 이미지/**/*.zip
+Safe-Byte_필요 기자재.xlsx
+한이음 수행계획서.pdf

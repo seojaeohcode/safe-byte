@@ -1,0 +1,60 @@
+{
+  "description": "SafeByte public food data API configuration example. Copy this file to config/mfds_public_apis.json and fill local keys when needed.",
+  "keys": {
+    "data_go_kr_service_key": "YOUR_DATA_GO_KR_SERVICE_KEY",
+    "foodsafetykorea_key": "YOUR_FOODSAFETYKOREA_KEY"
+  },
+  "defaults": {
+    "format": "json",
+    "start_index": 1,
+    "end_index": 100,
+    "timeout_seconds": 10,
+    "cache_ttl_seconds": 86400
+  },
+  "apis": {
+    "food_raw_material_info": {
+      "display_name": "MFDS food raw material information",
+      "provider": "data.go.kr",
+      "service_key_ref": "data_go_kr_service_key",
+      "request_url": "http://apis.data.go.kr/1471000/FoodRwmtInfo/getFoodRwmtInfo",
+      "purpose": "Ingredient name normalization and raw-material lookup"
+    },
+    "imported_food_ingredient_info": {
+      "display_name": "MFDS imported food ingredient information",
+      "provider": "data.go.kr",
+      "service_key_ref": "data_go_kr_service_key",
+      "request_url": "http://apis.data.go.kr/1471000/IprtFoodIngdInfoService/getIprtFoodIngdInfoService",
+      "purpose": "Imported ingredient and origin lookup"
+    },
+    "food_qr_info": {
+      "display_name": "MFDS Food QR information service",
+      "provider": "data.go.kr",
+      "service_key_ref": "data_go_kr_service_key",
+      "request_url": "http://apis.data.go.kr/1471000/FoodQrInfoService01/getFoodQrProdList01",
+      "purpose": "Product QR, ingredient, nutrition, and allergen reference lookup"
+    },
+    "food_nutrition_component_db": {
+      "display_name": "MFDS food nutrition component DB",
+      "provider": "data.go.kr",
+      "service_key_ref": "data_go_kr_service_key",
+      "request_url": "http://apis.data.go.kr/1471000/FoodNtrCpntDbInfo02/getFoodNtrCpntDbInq02",
+      "purpose": "Product nutrition reference lookup"
+    },
+    "health_functional_food_nutrition_db": {
+      "display_name": "Food Safety Korea health functional food nutrition DB",
+      "provider": "foodsafetykorea.go.kr",
+      "service_key_ref": "foodsafetykorea_key",
+      "service_id": "I0760",
+      "endpoint_template": "http://openapi.foodsafetykorea.go.kr/api/{key}/{service_id}/{format}/{start_index}/{end_index}",
+      "purpose": "Health functional food nutrition and ingredient reference lookup"
+    },
+    "food_raw_material_code": {
+      "display_name": "Food Safety Korea food raw material code",
+      "provider": "foodsafetykorea.go.kr",
+      "service_key_ref": "foodsafetykorea_key",
+      "service_id": "I2520",
+      "endpoint_template": "http://openapi.foodsafetykorea.go.kr/api/{key}/{service_id}/{format}/{start_index}/{end_index}",
+      "purpose": "Raw material code, synonym, and category reference lookup"
+    }
+  }
+}

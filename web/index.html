@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Safe-Byte OCR Lab</title>
+    <link rel="icon" href="data:,">
+    <script>
+      window.SAFE_BYTE_ASSET_BASE =
+        location.pathname === "/app" || location.pathname === "/app/"
+          ? "/static/"
+          : "./";
+      document.write(
+        '<link rel="stylesheet" href="' + window.SAFE_BYTE_ASSET_BASE + 'styles.css">'
+      );
+    </script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="mast">
+        <div>
+          <p class="eyebrow">Safe-Byte OCR Lab</p>
+          <h1>한국 식품 라벨 판독</h1>
+        </div>
+        <div class="mast-actions">
+          <button class="guide-trigger" id="guideButton" type="button">가이드</button>
+          <div class="system-strip" id="systemStrip">
+            <span class="dot"></span>
+            <span id="systemText">서버 확인 중</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel control-panel">
+          <div class="panel-head">
+            <h2>입력</h2>
+            <span id="sampleCount">0 samples</span>
+          </div>
+
+          <label class="dropzone" id="dropzone" data-guide="input">
+            <input id="fileInput" type="file" accept="image/*" capture="environment">
+            <span class="drop-main">라벨 사진 선택</span>
+            <span class="drop-sub" id="fileName">JPG, PNG</span>
+          </label>
+
+          <div class="preview-frame">
+            <img id="preview" alt="선택한 라벨 이미지">
+            <div class="preview-empty" id="previewEmpty">sample</div>
+          </div>
+
+          <div class="profile-grid" data-guide="profiles">
+            <label><input type="checkbox" name="profile" value="halal" checked> Halal</label>
+            <label><input type="checkbox" name="profile" value="vegan" checked> Vegan</label>
+            <label><input type="checkbox" name="profile" value="allergy" checked> Allergy</label>
+          </div>
+
+          <div class="mode-row" role="group" aria-label="OCR mode" data-guide="mode">
+            <button class="mode" id="mockMode" type="button">Mock</button>
+            <button class="mode paid active" id="liveMode" type="button">CLOVA</button>
+          </div>
+
+          <div class="mode-status live" id="modeStatus">CLOVA 실제 OCR 모드입니다. 업로드한 사진만 분석하며 Mock 문구는 전송하지 않습니다.</div>
+
+          <div class="mock-block" id="mockBlock" hidden>
+            <div class="field-label">Mock 테스트 문구</div>
+            <textarea id="mockText" rows="5">원재료명: 밀가루, 팜유, 정제염, 대두, 우유, 계란, 돼지고기향분말, 젤라틴
+알레르기 유발물질: 밀, 대두, 우유, 계란, 돼지고기 함유</textarea>
+          </div>
+
+          <label class="toggle-row">
+            <input id="forceOcr" type="checkbox">
+            <span>캐시 무시</span>
+          </label>
+
+          <button class="primary" id="analyzeButton" type="button" data-guide="analyze">
+            <span class="button-mark">OCR</span>
+            분석 실행
+          </button>
+        </aside>
+
+        <section class="panel result-panel">
+          <div class="panel-head">
+            <h2>결과</h2>
+            <span id="requestId">대기</span>
+          </div>
+
+          <div class="verdict safe" id="verdict" data-guide="result">
+            <span id="verdictLevel">READY</span>
+            <strong id="verdictSummary">샘플 또는 이미지를 선택하세요.</strong>
+          </div>
+
+          <div class="metrics">
+            <div>
+              <span>OCR</span>
+              <strong id="ocrProvider">-</strong>
+            </div>
+            <div>
+              <span>Cache</span>
+              <strong id="cacheState">-</strong>
+            </div>
+            <div>
+              <span>Paid</span>
+              <strong id="paidState">-</strong>
+            </div>
+            <div>
+              <span>Size</span>
+              <strong id="imageSize">-</strong>
+            </div>
+          </div>
+
+          <div class="cost-rack" aria-label="비용 현황" data-guide="cost">
+            <div class="cost-tile">
+              <span>Ncloud</span>
+              <strong id="ncloudCost">-</strong>
+              <small id="ncloudCostMeta">청구 스냅샷 대기</small>
+            </div>
+            <div class="cost-tile">
+              <span>Server</span>
+              <strong id="serverCost">-</strong>
+              <small id="serverCostMeta">인스턴스 확인 중</small>
+            </div>
+            <div class="cost-tile">
+              <span>OCR</span>
+              <strong id="ocrCost">-</strong>
+              <small id="ocrCostMeta">사용량 확인 중</small>
+            </div>
+            <div class="cost-tile">
+              <span>Cache</span>
+              <strong id="cacheBackend">-</strong>
+              <small id="cacheMeta">Redis 확인 중</small>
+            </div>
+          </div>
+
+          <div class="split">
+            <section>
+              <h3>감지 성분</h3>
+              <div class="detection-list" id="detections"></div>
+            </section>
+            <section>
+              <h3>OCR 텍스트</h3>
+              <pre id="ocrText"></pre>
+            </section>
+          </div>
+        </section>
+      </section>
+
+      <section class="samples-band">
+        <div class="band-head" data-guide="samples">
+          <h2>선별 샘플</h2>
+          <div class="category-tabs">
+            <button class="tab active" data-category="all" type="button">All</button>
+            <button class="tab" data-category="noodle" type="button">Noodle</button>
+            <button class="tab" data-category="snack" type="button">Snack</button>
+          </div>
+        </div>
+        <div class="sample-grid" id="sampleGrid"></div>
+      </section>
+    </main>
+
+    <div class="busy-overlay" id="busyOverlay" aria-live="polite" aria-hidden="true">
+      <div class="busy-card" role="status">
+        <span class="loader"></span>
+        <strong id="busyTitle">분석 중입니다</strong>
+        <p id="busyMessage">OCR과 성분 판정을 진행하고 있어요. 완료될 때까지 잠시만 기다려주세요.</p>
+      </div>
+    </div>
+
+    <div class="guide-backdrop" id="guideBackdrop" hidden></div>
+    <section class="guide-popover" id="guidePopover" hidden aria-live="polite" aria-modal="true" role="dialog">
+      <p class="guide-step" id="guideStep">1 / 6</p>
+      <h2 id="guideTitle">가이드</h2>
+      <p id="guideBody">기능 안내를 시작합니다.</p>
+      <div class="guide-actions">
+        <button class="ghost" id="guideSkip" type="button">닫기</button>
+        <button class="ghost" id="guidePrev" type="button">이전</button>
+        <button class="primary guide-next" id="guideNext" type="button">다음</button>
+      </div>
+    </section>
+
+    <script>
+      document.write('<script src="' + window.SAFE_BYTE_ASSET_BASE + 'config.js"><\/script>');
+      document.write('<script src="' + window.SAFE_BYTE_ASSET_BASE + 'app.js"><\/script>');
+    </script>
+  </body>
+</html>

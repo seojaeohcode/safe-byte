@@ -1,0 +1,28 @@
+# Prefer environment variables for Ncloud API credentials:
+# export NCLOUD_ACCESS_KEY="..."
+# export NCLOUD_SECRET_KEY="..."
+# export NCLOUD_REGION="KR"
+
+project_name = "safebyte"
+region       = "KR"
+site         = "public"
+zone         = "KR-2"
+
+# Use your public IP with /32 for SSH in real deployments.
+# Example: ssh_allowed_cidr = "203.0.113.10/32"
+ssh_allowed_cidr = "203.0.113.10/32"
+web_allowed_cidr = "203.0.113.10/32"
+
+# Default: let Terraform create only the Ncloud Login Key named safebyte-tf-key.
+# If it already exists, set create_login_key=false and keep login_key_name as the existing key name.
+create_login_key = true
+login_key_name   = "safebyte-tf-key"
+
+# Paste your local public SSH key, e.g. ~/.ssh/id_ed25519.pub.
+admin_ssh_public_key = "ssh-ed25519 AAAA... your-key-comment"
+
+server_image_name = "ubuntu-22.04-base"
+server_spec_code     = "mi1-g3"
+fee_system_type_code = "FXSUM"
+deploy_user          = "deploy"
+app_dir              = "/opt/safebyte"

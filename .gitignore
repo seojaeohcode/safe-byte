@@ -1,0 +1,71 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Runtime data
+logs/
+*.log
+data/*.sqlite3
+data/*.sqlite3-*
+data/live_ocr_*.json
+config/ncloud_cost_snapshot.json
+config/mfds_public_apis.json
+web/config.js
+
+# Sample/product image datasets and debug captures
+data/selected_ocr_samples/
+상품 이미지/
+_debug_images/
+
+# Flutter / Android generated files
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/app/build/
+
+# Terraform / infrastructure state
+.tools/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+infra/terraform/terraform.tfvars
+infra/terraform/.env.ncloud
+infra/terraform/*.auto.tfvars
+infra/terraform/*.auto.tfvars.json
+infra/terraform/.terraform.lock.hcl
+
+# Local documents and contest work files
+docs/
+*.zip
+*.pptx
+*.pdf
+*.xlsx
+*.docx
+*.hwpx
+[서식1] 2026년 한이음 드림업 개발보고서/
+[서식2] 2026년 한이음 드림업 제작설계서(택1, 개인정보 기재x)/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

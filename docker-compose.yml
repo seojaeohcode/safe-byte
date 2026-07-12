@@ -1,0 +1,105 @@
+services:
+  safebyte-api:
+    build:
+      context: .
+    image: safebyte-backend:local
+    container_name: safebyte-api
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    env_file:
+      - .env
+    environment:
+      ENABLE_DOCS: "false"
+      SAFEBYTE_SQLITE_PATH: /app/data/safe_byte.sqlite3
+      RISK_RULES_PATH: /app/data/risk_rules.json
+      MFDS_CONFIG_PATH: /app/config/mfds_public_apis.json
+      SAMPLE_IMAGES_PATH: /app/data/selected_ocr_samples
+      NCLOUD_COST_SNAPSHOT_PATH: /app/config/ncloud_cost_snapshot.json
+      REDIS_ENABLED: "true"
+      REDIS_URL: redis://redis:6379/0
+      PUBLIC_API_LIVE_HEALTH: "false"
+      ALLOW_PAID_OCR: "${ALLOW_PAID_OCR:-false}"
+      OCR_CACHE_ENABLED: "true"
+      OCR_DAILY_LIMIT: "${OCR_DAILY_LIMIT:-10}"
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://127.0.0.1:5173,http://localhost:5173}
+    volumes:
+      - ./data:/app/data
+      - ./data/selected_ocr_samples:/app/data/selected_ocr_samples:ro
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 512m
+    expose:
+      - "8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: safebyte-redis
+    user: "999:999"
+    command:
+      - redis-server
+      - --dir
+      - /tmp
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 48mb
+      - --maxmemory-policy
+      - allkeys-lru
+    expose:
+      - "6379"
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev,uid=999,gid=999,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 96m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 20s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  nginx:
+    image: nginxinc/nginx-unprivileged:1.27-alpine
+    container_name: safebyte-nginx
+    depends_on:
+      safebyte-api:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:noexec,nosuid,nodev,size=32m
+      - /var/run:noexec,nosuid,nodev,size=8m
+      - /tmp:noexec,nosuid,nodev,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 96m
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
