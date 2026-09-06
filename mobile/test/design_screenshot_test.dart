@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:safebyte_mobile/l10n.dart';
 import 'package:safebyte_mobile/main.dart';
 import 'package:safebyte_mobile/workspace.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,7 +24,7 @@ void main() {
     expect(find.text('주말 장보기'), findsOneWidget);
     await tester.tap(find.text('기록').last);
     await tester.pumpAndSettle();
-    expect(find.text('분석한 라벨이 여기에 모입니다.'), findsOneWidget);
+    expect(find.text('아직 분석 기록이 없습니다.'), findsOneWidget);
     await tester.tap(find.text('내 정보').last);
     await tester.pumpAndSettle();
     await _capture('my_account.png');
@@ -63,6 +65,30 @@ void main() {
     );
     await _settlePreview(tester);
     await _capture('auth_onboarding.png');
+  });
+
+  testWidgets('interface follows the chosen language, right to left for Arabic',
+      (tester) async {
+    await _setPhoneViewport(tester);
+    addTearDown(() => appLanguage.select('ko'));
+
+    await appLanguage.select('en');
+    await tester.pumpWidget(_PreviewShell(
+        child: AuthScreen(api: _PreviewApi(), onAuthenticated: (_) async {})));
+    await _settlePreview(tester);
+    expect(find.text('Login'), findsWidgets);
+    expect(find.text('로그인'), findsNothing);
+    await _capture('auth_english.png');
+
+    await appLanguage.select('ar');
+    await tester.pumpWidget(_PreviewShell(
+        child: AuthScreen(api: _PreviewApi(), onAuthenticated: (_) async {})));
+    await _settlePreview(tester);
+    expect(Directionality.of(tester.element(find.byType(AuthScreen))),
+        TextDirection.rtl);
+    expect(find.text('로그인'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await _capture('auth_arabic.png');
   });
 
   testWidgets('capture home scan screen', (tester) async {
@@ -116,6 +142,13 @@ Future<void> _loadKoreanFonts() async {
     loader.addFont(Future.value(ByteData.sublistView(bytes)));
   }
   await loader.load();
+
+  // Arabic is a theme fallback family, so the RTL screenshots need it too.
+  final arabic = FontLoader('NotoSansArabic');
+  final arabicBytes =
+      await File('assets/fonts/NotoSansArabic-Regular.ttf').readAsBytes();
+  arabic.addFont(Future.value(ByteData.sublistView(arabicBytes)));
+  await arabic.load();
 
   final iconFile = File(
     r'C:\flutter_sdk\flutter\bin\cache\artifacts\material_fonts\MaterialIcons-Regular.otf',
@@ -228,6 +261,13 @@ class _PreviewShell extends StatelessWidget {
     return RepaintBoundary(key: _captureKey, child: MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: safeByteTheme(),
+      locale: appLanguage.locale,
+      supportedLocales: uiLanguages.keys.map(Locale.new),
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      localeResolutionCallback: (_, __) => appLanguage.locale,
+      builder: (context, inner) => Directionality(
+          textDirection: appLanguage.direction,
+          child: inner ?? const SizedBox.shrink()),
         home: child,
       ),
     );

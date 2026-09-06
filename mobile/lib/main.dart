@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'workspace.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'l10n.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -233,8 +236,18 @@ class _SafeByteAppState extends State<SafeByteApp> {
   @override
   void initState() {
     super.initState();
+    appLanguage.addListener(_onLanguageChanged);
+    appLanguage.restore();
     _restoreSession();
   }
+
+  @override
+  void dispose() {
+    appLanguage.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
+  void _onLanguageChanged() => setState(() {});
 
   Future<void> _restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
@@ -292,6 +305,15 @@ class _SafeByteAppState extends State<SafeByteApp> {
       debugShowCheckedModeBanner: false,
       title: 'Safe-Byte',
       theme: safeByteTheme(),
+      locale: appLanguage.locale,
+      supportedLocales: uiLanguages.keys.map(Locale.new),
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      localeResolutionCallback: (_, __) => appLanguage.locale,
+      // Arabic has to lay out right to left across every screen, not just the result text.
+      builder: (context, child) => Directionality(
+        textDirection: appLanguage.direction,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: _booting
           ? const SplashScreen()
           : _user == null || _token == null
@@ -388,7 +410,15 @@ class _AuthScreenState extends State<AuthScreen> {
     return Scaffold(
       body: _BrandBackdrop(
         child: SafeArea(
-          child: LayoutBuilder(
+          child: Column(children: [
+            // Someone who cannot read Korean has to be able to switch before signing in.
+            const Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Padding(
+                    padding: EdgeInsets.only(top: 8, left: 12, right: 12),
+                    child: LanguageButton())),
+            Expanded(
+              child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 520;
 
@@ -424,7 +454,9 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               );
             },
-          ),
+              ),
+            ),
+          ]),
         ),
       ),
     );
@@ -505,11 +537,11 @@ class _AuthFormPanel extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 28),
-              Text(isLogin ? '로그인' : '회원가입',
+              Text(isLogin ? t('로그인') : t('회원가입'),
                   style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 10),
               Text(
-                isLogin ? '저장한 검사 기준과 기록을 불러와요.' : '나에게 맞는 식품 선택을 시작해 보세요.',
+                isLogin ? t('저장한 검사 기준과 기록을 불러와요.') : t('나에게 맞는 식품 선택을 시작해 보세요.'),
                 style: const TextStyle(color: _mutedInk),
               ),
               const SizedBox(height: 32),
@@ -517,9 +549,9 @@ class _AuthFormPanel extends StatelessWidget {
                 TextFormField(
                   controller: name,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: '이름 또는 닉네임',
-                    prefixIcon: Icon(Icons.person_outline),
+                  decoration: InputDecoration(
+                    labelText: t('이름 또는 닉네임'),
+                    prefixIcon: const Icon(Icons.person_outline),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -529,13 +561,13 @@ class _AuthFormPanel extends StatelessWidget {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
-                decoration: const InputDecoration(
-                  labelText: '이메일',
-                  prefixIcon: Icon(Icons.mail_outline),
+                decoration: InputDecoration(
+                  labelText: t('이메일'),
+                  prefixIcon: const Icon(Icons.mail_outline),
                 ),
                 validator: (value) => (value?.trim() ?? '').contains('@')
                     ? null
-                    : '이메일을 입력해 주세요.',
+                    : t('이메일을 입력해 주세요.'),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -544,12 +576,12 @@ class _AuthFormPanel extends StatelessWidget {
                 autofillHints: [
                   isLogin ? AutofillHints.password : AutofillHints.newPassword
                 ],
-                decoration: const InputDecoration(
-                  labelText: '비밀번호',
-                  prefixIcon: Icon(Icons.lock_outline),
+                decoration: InputDecoration(
+                  labelText: t('비밀번호'),
+                  prefixIcon: const Icon(Icons.lock_outline),
                 ),
                 validator: (value) =>
-                    (value ?? '').length >= 6 ? null : '6자 이상 입력해 주세요.',
+                    (value ?? '').length >= 6 ? null : t('6자 이상 입력해 주세요.'),
                 onFieldSubmitted: (_) => onSubmit(),
               ),
               const SizedBox(height: 28),
@@ -560,17 +592,17 @@ class _AuthFormPanel extends StatelessWidget {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(isLogin ? '로그인하고 시작하기' : '가입하고 기준 설정'),
+                    : Text(isLogin ? t('로그인하고 시작하기') : t('가입하고 기준 설정')),
               ),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(isLogin ? '처음 이용하시나요?' : '이미 계정이 있나요?',
+                  Text(isLogin ? t('처음 이용하시나요?') : t('이미 계정이 있나요?'),
                       style: const TextStyle(color: _mutedInk, fontSize: 13)),
                   TextButton(
                       onPressed: loading ? null : () => onModeChanged(!isLogin),
-                      child: Text(isLogin ? '회원가입' : '로그인')),
+                      child: Text(isLogin ? t('회원가입') : t('로그인'))),
                 ],
               ),
             ],
@@ -653,13 +685,13 @@ class _HomeScreenState extends State<HomeScreen> {
           source: source, maxWidth: 2200, imageQuality: 92);
       if (image != null && mounted) setState(() => _image = image);
     } catch (_) {
-      if (mounted) showSnack(context, '사진을 불러오지 못했어요. 카메라·사진 접근 권한을 확인해주세요.');
+      if (mounted) showSnack(context, t('사진을 불러오지 못했어요. 카메라·사진 접근 권한을 확인해주세요.'));
     }
   }
 
   Future<void> _analyze() async {
     if (_image == null) {
-      showSnack(context, '라벨 사진을 먼저 선택해주세요.');
+      showSnack(context, t('라벨 사진을 먼저 선택해주세요.'));
       return;
     }
     setState(() => _loading = true);
@@ -678,13 +710,13 @@ class _HomeScreenState extends State<HomeScreen> {
               '/api/v1/carts/${_scanContext!['cart_id']}/items', widget.token,
               body: {
                 'request_id': result.requestId,
-                'name': '스캔한 상품',
+                'name': t('스캔한 상품'),
                 'quantity': 1
               });
         } catch (_) {
           if (mounted) {
             showSnack(
-                context, '분석 결과는 저장했지만 장바구니에 담지 못했어요. 장보기가 종료됐는지 확인해주세요.');
+                context, t('분석 결과는 저장했지만 장바구니에 담지 못했어요. 장보기가 종료됐는지 확인해주세요.'));
           }
         }
       }
@@ -742,14 +774,14 @@ class _HomeScreenState extends State<HomeScreen> {
       Scaffold(
         appBar: _section == 0 || _section == 3
             ? AppBar(
-                title: Text(_section == 0 ? 'Safe-Byte' : '내 정보',
+                title: Text(_section == 0 ? 'Safe-Byte' : t('내 정보'),
                     style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 20,
                         letterSpacing: -0.5)),
                 actions: [
                   IconButton(
-                      tooltip: '내 검사 기준',
+                      tooltip: t('내 검사 기준'),
                       onPressed: _openSettings,
                       icon: const Icon(Icons.tune_outlined)),
                   const SizedBox(width: 12)
@@ -772,21 +804,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 const TextStyle(fontWeight: FontWeight.w700, height: 1.8),
             unselectedLabelStyle: const TextStyle(height: 1.8),
             onTap: (value) => setState(() => _section = value),
-            items: const [
+            items: [
               BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home),
-                  label: '홈'),
+                  icon: const Icon(Icons.home_outlined),
+                  activeIcon: const Icon(Icons.home),
+                  label: t('홈')),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.shopping_bag_outlined),
-                  activeIcon: Icon(Icons.shopping_bag),
-                  label: '장바구니'),
+                  icon: const Icon(Icons.shopping_bag_outlined),
+                  activeIcon: const Icon(Icons.shopping_bag),
+                  label: t('장바구니')),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.history_outlined), label: '기록'),
+                  icon: const Icon(Icons.history_outlined), label: t('기록')),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline),
-                  activeIcon: Icon(Icons.person),
-                  label: '내 정보'),
+                  icon: const Icon(Icons.person_outline),
+                  activeIcon: const Icon(Icons.person),
+                  label: t('내 정보')),
             ],
           ),
         ),
@@ -809,7 +841,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
                     children: _section == 3
                         ? [
-                            Text('$userName님',
+                            Text(tf('{0}님', [userName]),
                                 style:
                                     Theme.of(context).textTheme.headlineSmall),
                             const SizedBox(height: 6),
@@ -820,9 +852,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 leading: const Icon(Icons.tune_outlined),
-                                title: const Text('내 검사 기준'),
+                                title: Text(t('내 검사 기준')),
                                 subtitle: Text(widget.user.profiles.isEmpty
-                                    ? '검사할 성분을 설정해 주세요'
+                                    ? t('검사할 성분을 설정해 주세요')
                                     : widget.user.profiles
                                         .map(profileLabel)
                                         .join(', ')),
@@ -831,20 +863,28 @@ class _HomeScreenState extends State<HomeScreen> {
                             ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 leading: const Icon(Icons.people_outline),
-                                title: const Text('가족 기준 관리'),
+                                title: Text(t('가족 기준 관리')),
                                 trailing: const Icon(Icons.chevron_right),
                                 onTap: () => _openWorkspace()),
                             ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 leading: const Icon(Icons.bookmark_border),
-                                title: const Text('저장한 상품'),
+                                title: Text(t('저장한 상품')),
                                 trailing: const Icon(Icons.chevron_right),
                                 onTap: _openSavedProducts),
+                            ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(Icons.language_outlined),
+                                title: Text(t('언어')),
+                                subtitle:
+                                    Text(uiLanguages[appLanguage.code] ?? ''),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => showLanguagePicker(context)),
                             const SizedBox(height: 16),
                             const Divider(),
                             ExpansionTile(
                                 tilePadding: EdgeInsets.zero,
-                                title: const Text('서비스 연결 상태'),
+                                title: Text(t('서비스 연결 상태')),
                                 children: [
                                   _StatusPanel(
                                       health: _health,
@@ -859,19 +899,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                     onPressed: widget.onLogout,
                                     style: TextButton.styleFrom(
                                         foregroundColor: _mutedInk),
-                                    child: const Text('로그아웃'))),
+                                    child: Text(t('로그아웃')))),
                           ]
                         : [
-                            Text('$userName님, 안녕하세요',
+                            Text(tf('{0}님, 안녕하세요', [userName]),
                                 style: const TextStyle(
                                     color: _mutedInk, fontSize: 14)),
                             const SizedBox(height: 8),
-                            Text('식품 라벨 확인',
+                            Text(t('식품 라벨 확인'),
                                 style:
                                     Theme.of(context).textTheme.headlineMedium),
                             const SizedBox(height: 8),
-                            const Text('피하고 싶은 성분이 있는지 확인해요.',
-                                style: TextStyle(color: _mutedInk)),
+                            Text(t('피하고 싶은 성분이 있는지 확인해요.'),
+                                style: const TextStyle(color: _mutedInk)),
                             const SizedBox(height: 28),
                             if (_scanContext != null) ...[
                               Row(children: [
@@ -880,11 +920,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                     child: Text(
-                                        '적용 중: ${_scanContext!['name']}',
+                                        tf('적용 중: {0}', [_scanContext!['name']]),
                                         style: const TextStyle(
                                             color: _actionTeal))),
                                 IconButton(
-                                    tooltip: '내 기준으로 돌아가기',
+                                    tooltip: t('내 기준으로 돌아가기'),
                                     onPressed: () =>
                                         setState(() => _scanContext = null),
                                     icon: const Icon(Icons.close, size: 20))
@@ -920,14 +960,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         CrossAxisAlignment
                                                             .start,
                                                     children: [
-                                                  Text('원재료명을 찍어주세요',
+                                                  Text(t('원재료명을 찍어주세요'),
                                                       style: Theme.of(context)
                                                           .textTheme
                                                           .titleMedium),
                                                   const SizedBox(height: 6),
-                                                  const Text(
-                                                      '글자가 잘 보이도록 가까이 촬영해 주세요.',
-                                                      style: TextStyle(
+                                                  Text(
+                                                      t('글자가 잘 보이도록 가까이 촬영해 주세요.'),
+                                                      style: const TextStyle(
                                                           color: _mutedInk,
                                                           fontSize: 13,
                                                           height: 1.5)),
@@ -937,7 +977,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       FilledButton(
                                           onPressed: () =>
                                               _pick(ImageSource.camera),
-                                          child: const Text('라벨 촬영하기')),
+                                          child: Text(t('라벨 촬영하기'))),
                                     ]),
                               ),
                               const SizedBox(height: 4),
@@ -948,7 +988,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       style: TextButton.styleFrom(
                                           foregroundColor: _mutedInk,
                                           minimumSize: const Size(160, 48)),
-                                      child: const Text('앨범에서 불러오기'))),
+                                      child: Text(t('앨범에서 불러오기')))),
                             ] else ...[
                               _CapturePanel(
                                   image: _image,
@@ -959,25 +999,25 @@ class _HomeScreenState extends State<HomeScreen> {
                               TextButton(
                                   onPressed: () =>
                                       setState(() => _image = null),
-                                  child: const Text('사진 선택 취소')),
+                                  child: Text(t('사진 선택 취소'))),
                             ],
                             const SizedBox(height: 20),
                             Row(children: [
                               Expanded(
-                                  child: Text('검사 기준',
+                                  child: Text(t('검사 기준'),
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium)),
                               TextButton(
                                   onPressed: _openSettings,
-                                  child: const Text('변경'))
+                                  child: Text(t('변경')))
                             ]),
                             const SizedBox(height: 4),
                             if (profiles.isEmpty)
-                              const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Text('알레르기나 식이 기준을 먼저 선택해 주세요.',
-                                      style: TextStyle(color: _mutedInk)))
+                              Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(t('알레르기나 식이 기준을 먼저 선택해 주세요.'),
+                                      style: const TextStyle(color: _mutedInk)))
                             else
                               Wrap(
                                   spacing: 8,
@@ -1000,17 +1040,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(height: 8),
                             _HomeShortcut(
                                 icon: Icons.people_outline,
-                                title: '가족 기준',
-                                subtitle: '가족에게 맞는 성분도 함께 확인해요',
+                                title: t('가족 기준'),
+                                subtitle: t('가족에게 맞는 성분도 함께 확인해요'),
                                 onTap: () => _openWorkspace()),
                             _HomeShortcut(
                                 icon: Icons.shopping_bag_outlined,
-                                title: '장보기 시작',
-                                subtitle: '확인한 상품을 장바구니에 모아요',
+                                title: t('장보기 시작'),
+                                subtitle: t('확인한 상품을 장바구니에 모아요'),
                                 onTap: () => setState(() => _section = 1)),
                             const SizedBox(height: 20),
-                            const Text('분석 결과와 함께 제품의 실제 표시사항을 확인해 주세요.',
-                                style: TextStyle(
+                            Text(t('분석 결과와 함께 제품의 실제 표시사항을 확인해 주세요.'),
+                                style: const TextStyle(
                                     color: _mutedInk,
                                     fontSize: 12,
                                     height: 1.6)),
@@ -1099,7 +1139,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   Future<void> _save() async {
     if (_saving) return;
     if (_profiles.isEmpty) {
-      showSnack(context, '검사 기준을 하나 이상 선택해주세요.');
+      showSnack(context, t('검사 기준을 하나 이상 선택해주세요.'));
       return;
     }
     setState(() => _saving = true);
@@ -1156,7 +1196,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: !widget.initialSetup,
-        title: Text(widget.initialSetup ? '기준 설정' : '내 기준'),
+        title: Text(widget.initialSetup ? t('기준 설정') : t('내 기준')),
       ),
       body: _BrandBackdrop(
         child: SafeArea(
@@ -1174,12 +1214,12 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          widget.initialSetup ? '먼저 기준을 정해주세요' : '먹기 전에 확인할 기준',
+                          widget.initialSetup ? t('먼저 기준을 정해주세요') : t('먹기 전에 확인할 기준'),
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '피하고 싶은 성분과 식이 기준을 선택해 주세요.',
+                          t('피하고 싶은 성분과 식이 기준을 선택해 주세요.'),
                           style: Theme.of(
                             context,
                           ).textTheme.bodyMedium?.copyWith(color: _mutedInk),
@@ -1187,8 +1227,8 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                         const SizedBox(height: 18),
                         TextFormField(
                           controller: _name,
-                          decoration: const InputDecoration(
-                            labelText: '이름 또는 닉네임',
+                          decoration: InputDecoration(
+                            labelText: t('이름 또는 닉네임'),
                           ),
                         ),
                         const SizedBox(height: 18),
@@ -1215,7 +1255,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                                   ),
                                 )
                               : const Icon(Icons.save_outlined),
-                          label: const Text('기준 저장'),
+                          label: Text(t('기준 저장')),
                         ),
                       ],
                     ),
@@ -1263,7 +1303,7 @@ class ResultScreen extends StatelessWidget {
                         Align(
                           alignment: Alignment.centerRight,
                           child: IconButton(
-                            tooltip: '닫기',
+                            tooltip: t('닫기'),
                             onPressed: () => Navigator.of(context).pop(),
                             icon: const Icon(Icons.close),
                           ),
@@ -1276,13 +1316,13 @@ class ResultScreen extends StatelessWidget {
                         FilledButton.icon(
                           onPressed: () => showResultDetails(context, result),
                           icon: const Icon(Icons.list_alt),
-                          label: const Text('세부 설명 보기'),
+                          label: Text(t('세부 설명 보기')),
                         ),
                         const SizedBox(height: 10),
                         OutlinedButton.icon(
                           onPressed: () => Navigator.of(context).pop(),
                           icon: const Icon(Icons.camera_alt_outlined),
-                          label: const Text('다른 라벨 확인'),
+                          label: Text(t('다른 라벨 확인')),
                         ),
                         if (result.extra.isNotEmpty) ...[
                           const SizedBox(height: 18),
@@ -1317,53 +1357,53 @@ void showResultDetails(BuildContext context, AnalysisResult result) {
             controller: controller,
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
             children: [
-              Text('세부 설명', style: Theme.of(context).textTheme.headlineSmall),
+              Text(t('세부 설명'), style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 6),
               Text(
-                '직접 원재료와 제조시설 공유 문구를 분리해서 보여줍니다.',
+                t('직접 원재료와 제조시설 공유 문구를 분리해서 보여줍니다.'),
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(color: _mutedInk),
               ),
               const SizedBox(height: 16),
               if (result.directDetections.isNotEmpty) ...[
-                const _SectionHeader(
+                _SectionHeader(
                   icon: Icons.warning_amber_outlined,
-                  title: '직접 함유/함유 문구',
-                  description: '원재료명 또는 함유 표시 주변에서 확인된 항목입니다.',
+                  title: t('직접 함유/함유 문구'),
+                  description: t('원재료명 또는 함유 표시 주변에서 확인된 항목입니다.'),
                 ),
                 ...result.directDetections.map(DetectionTile.new),
               ] else ...[
-                const _QuietNotice(
+                _QuietNotice(
                   icon: Icons.verified_outlined,
-                  title: '직접 함유 위험 성분은 보이지 않습니다.',
-                  body: 'OCR 결과 기준이며, 포장 훼손이나 흐린 사진이면 다시 촬영하는 것이 안전합니다.',
+                  title: t('직접 함유 위험 성분은 보이지 않습니다.'),
+                  body: t('OCR 결과 기준이며, 포장 훼손이나 흐린 사진이면 다시 촬영하는 것이 안전합니다.'),
                 ),
               ],
               if (result.facilityDetections.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const _SectionHeader(
+                _SectionHeader(
                   icon: Icons.factory_outlined,
-                  title: '제조시설 공유 표기',
-                  description: '직접 원재료가 아니라 같은 제조시설 문구에서 확인된 항목입니다.',
+                  title: t('제조시설 공유 표기'),
+                  description: t('직접 원재료가 아니라 같은 제조시설 문구에서 확인된 항목입니다.'),
                 ),
                 ...result.facilityDetections.map(DetectionTile.new),
               ],
               if (result.unknownDetections.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const _SectionHeader(
+                _SectionHeader(
                     icon: Icons.help_outline,
-                    title: '문맥 확인 필요',
-                    description: '직접 함유 여부를 확정하지 못한 항목입니다.'),
+                    title: t('문맥 확인 필요'),
+                    description: t('직접 함유 여부를 확정하지 못한 항목입니다.')),
                 ...result.unknownDetections.map(DetectionTile.new),
               ],
               const SizedBox(height: 12),
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
-                title: const Text('OCR 텍스트'),
+                title: Text(t('OCR 텍스트')),
                 children: [
                   SelectableText(
-                    result.ocrText.isEmpty ? 'OCR 텍스트가 없습니다.' : result.ocrText,
+                    result.ocrText.isEmpty ? t('OCR 텍스트가 없습니다.') : result.ocrText,
                     style: const TextStyle(height: 1.45),
                   ),
                 ],
@@ -1418,11 +1458,11 @@ class _CapturePanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('라벨 스캔',
+                    Text(t('라벨 스캔'),
                         style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 2),
                     Text(
-                      '원재료명과 함유 표시가 보이게 맞춰주세요.',
+                      t('원재료명과 함유 표시가 보이게 맞춰주세요.'),
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: _mutedInk),
@@ -1431,7 +1471,7 @@ class _CapturePanel extends StatelessWidget {
                 ),
               ),
               _SmallPill(
-                text: image == null ? '대기' : '준비',
+                text: image == null ? t('대기') : t('준비'),
                 color: image == null ? _mutedInk : _teal,
               ),
             ],
@@ -1479,7 +1519,7 @@ class _CapturePanel extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: loading ? null : onCamera,
                     icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text('촬영'),
+                    label: Text(t('촬영')),
                   ),
                 ),
                 const SizedBox(width: 8, height: 8),
@@ -1487,7 +1527,7 @@ class _CapturePanel extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: loading ? null : onGallery,
                     icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('앨범'),
+                    label: Text(t('앨범')),
                   ),
                 ),
               ];
@@ -1498,13 +1538,13 @@ class _CapturePanel extends StatelessWidget {
                     OutlinedButton.icon(
                       onPressed: loading ? null : onCamera,
                       icon: const Icon(Icons.photo_camera_outlined),
-                      label: const Text('촬영'),
+                      label: Text(t('촬영')),
                     ),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
                       onPressed: loading ? null : onGallery,
                       icon: const Icon(Icons.photo_library_outlined),
-                      label: const Text('앨범'),
+                      label: Text(t('앨범')),
                     ),
                   ],
                 );
@@ -1516,7 +1556,7 @@ class _CapturePanel extends StatelessWidget {
           FilledButton.icon(
             onPressed: loading || image == null ? null : onAnalyze,
             icon: const Icon(Icons.search),
-            label: Text(image == null ? '사진 선택 후 분석 가능' : '라벨 분석하기'),
+            label: Text(image == null ? t('사진 선택 후 분석 가능') : t('라벨 분석하기')),
           ),
         ],
       ),
@@ -1643,12 +1683,12 @@ class _StatusPanel extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '테스트 상태',
+                  t('테스트 상태'),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
               IconButton(
-                tooltip: '새로고침',
+                tooltip: t('새로고침'),
                 onPressed: loading ? null : onRefresh,
                 icon: loading
                     ? const SizedBox(
@@ -1665,11 +1705,11 @@ class _StatusPanel extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _MetricChip(label: '오늘 OCR', value: usage),
-              _MetricChip(label: 'OCR 비용', value: ocr),
+              _MetricChip(label: t('오늘 OCR'), value: usage),
+              _MetricChip(label: t('OCR 비용'), value: ocr),
               _MetricChip(label: 'Ncloud', value: ncloud),
               _MetricChip(
-                label: '캐시',
+                label: t('캐시'),
                 value: costs?.cacheConnected == true ? 'Redis' : '-',
               ),
             ],
@@ -1791,12 +1831,12 @@ class _AllergySelectorState extends State<AllergySelector> {
               children: [
                 Expanded(
                   child: Text(
-                    '내 알레르기 기준',
+                    t('내 알레르기 기준'),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
                 Text(
-                  broad ? '전체' : '${selectedChoices.length}개',
+                  broad ? t('전체') : tf('{0}개', [selectedChoices.length]),
                   style: Theme.of(
                     context,
                   ).textTheme.labelLarge?.copyWith(color: _amber),
@@ -1806,8 +1846,8 @@ class _AllergySelectorState extends State<AllergySelector> {
             const SizedBox(height: 6),
             Text(
               broad
-                  ? '세부 항목을 고르지 않으면 국내 표시 대상 알레르기를 전체 검사합니다.'
-                  : '피해야 하는 성분을 선택해 주세요.',
+                  ? t('세부 항목을 고르지 않으면 국내 표시 대상 알레르기를 전체 검사합니다.')
+                  : t('피해야 하는 성분을 선택해 주세요.'),
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: _mutedInk),
@@ -1818,12 +1858,12 @@ class _AllergySelectorState extends State<AllergySelector> {
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: '성분 검색 (예: 우유, 땅콩)',
+                hintText: t('성분 검색 (예: 우유, 땅콩)'),
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _search.text.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: '검색 지우기',
+                        tooltip: t('검색 지우기'),
                         icon: const Icon(Icons.close),
                         onPressed: () {
                           _search.clear();
@@ -1845,13 +1885,13 @@ class _AllergySelectorState extends State<AllergySelector> {
               children: [
                 FilterChip(
                   selected: broad,
-                  label: const Text('국내 표시 대상 전체'),
+                  label: Text(t('국내 표시 대상 전체')),
                   onSelected: (_) => widget.onChanged('allergy'),
                 ),
                 for (final bundle in allergyBundles)
                   FilterChip(
                     selected: bundle.tokens.every(widget.selected.contains),
-                    label: Text(bundle.label),
+                    label: Text(t(bundle.label)),
                     onSelected: (_) => _toggleBundle(bundle),
                   ),
               ],
@@ -1863,7 +1903,7 @@ class _AllergySelectorState extends State<AllergySelector> {
                 runSpacing: 8,
                 children: selectedChoices.map((choice) {
                   return InputChip(
-                    label: Text(choice.label),
+                    label: Text(t(choice.label)),
                     onDeleted: () => widget.onChanged(choice.token),
                   );
                 }).toList(),
@@ -1877,7 +1917,7 @@ class _AllergySelectorState extends State<AllergySelector> {
                   for (final category in allergyCategories) ...[
                     ChoiceChip(
                       selected: _category == category,
-                      label: Text(category),
+                      label: Text(t(category)),
                       onSelected: (_) => setState(() => _category = category),
                     ),
                     const SizedBox(width: 8),
@@ -1893,7 +1933,7 @@ class _AllergySelectorState extends State<AllergySelector> {
                 final checked = widget.selected.contains(choice.token);
                 return FilterChip(
                   selected: checked,
-                  label: Text(choice.label),
+                  label: Text(t(choice.label)),
                   onSelected: (_) => widget.onChanged(choice.token),
                 );
               }).toList(),
@@ -1901,7 +1941,7 @@ class _AllergySelectorState extends State<AllergySelector> {
             if (visibleChoices.isEmpty) ...[
               const SizedBox(height: 10),
               Text(
-                '검색 결과가 없습니다. 원재료명에 보이는 표현을 메모에 남겨두면 세부 설명에서 함께 확인할 수 있습니다.',
+                t('검색 결과가 없습니다. 원재료명에 보이는 표현을 메모에 남겨두면 세부 설명에서 함께 확인할 수 있습니다.'),
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: _mutedInk),
@@ -2014,10 +2054,10 @@ class DetectionTile extends StatelessWidget {
                       ),
                       _SmallPill(
                         text: detection.isFacilityShared
-                            ? '공유시설'
+                            ? t('공유시설')
                             : detection.occurrenceType == 'unknown'
-                                ? '확인 필요'
-                                : '직접',
+                                ? t('확인 필요')
+                                : t('직접'),
                         color: color,
                       ),
                     ],
@@ -2097,12 +2137,12 @@ class LoadingOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                '라벨을 확인하고 있어요',
+                t('라벨을 확인하고 있어요'),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 6),
               Text(
-                '원재료명과 알레르기 표시를 읽고 있어요.',
+                t('원재료명과 알레르기 표시를 읽고 있어요.'),
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
@@ -2136,7 +2176,7 @@ class _VerdictHero extends StatelessWidget {
             Icon(resultIcon(result.finalLevel),
                 size: 24, color: scheme.foreground),
             const SizedBox(width: 8),
-            Text('검사 결과',
+            Text(t('검사 결과'),
                 style: TextStyle(
                     color: scheme.foreground, fontWeight: FontWeight.w600)),
           ]),
@@ -2181,14 +2221,14 @@ class _ResultCounts extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _MetricChip(label: '직접 함유', value: '${result.directDetections.length}'),
+        _MetricChip(label: t('직접 함유'), value: '${result.directDetections.length}'),
         _MetricChip(
-          label: '제조시설',
+          label: t('제조시설'),
           value: '${result.facilityDetections.length}',
         ),
         if (result.unknownDetections.isNotEmpty)
           _MetricChip(
-              label: '문맥 확인', value: '${result.unknownDetections.length}'),
+              label: t('문맥 확인'), value: '${result.unknownDetections.length}'),
       ],
     );
   }
@@ -2224,15 +2264,15 @@ class _EmptyCaptureGuide extends StatelessWidget {
               ),
               SizedBox(height: compact ? 8 : 14),
               Text(
-                '원재료명과 알레르기 표시가 보이게 찍어주세요',
+                t('원재료명과 알레르기 표시가 보이게 찍어주세요'),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               SizedBox(height: compact ? 4 : 8),
               Text(
                 compact
-                    ? '라벨을 정면으로 맞추면 OCR이 더 안정적입니다.'
-                    : '흐린 사진이나 너무 기울어진 사진은 OCR이 제조시설 문구를 과하게 잡을 수 있습니다.',
+                    ? t('라벨을 정면으로 맞추면 OCR이 더 안정적입니다.')
+                    : t('흐린 사진이나 너무 기울어진 사진은 OCR이 제조시설 문구를 과하게 잡을 수 있습니다.'),
                 textAlign: TextAlign.center,
                 maxLines: compact ? 2 : 3,
                 overflow: TextOverflow.ellipsis,
@@ -2246,9 +2286,9 @@ class _EmptyCaptureGuide extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  const _SmallPill(text: '흔들림 없이', color: _teal),
-                  const _SmallPill(text: '라벨 정면', color: _leaf),
-                  if (!compact) const _SmallPill(text: '그림자 적게', color: _blue),
+                  _SmallPill(text: t('흔들림 없이'), color: _teal),
+                  _SmallPill(text: t('라벨 정면'), color: _leaf),
+                  if (!compact) _SmallPill(text: t('그림자 적게'), color: _blue),
                 ],
               ),
             ],
@@ -2423,9 +2463,9 @@ class SafeByteApi {
           await request.send().timeout(const Duration(seconds: 30)));
       return _checkedJson(response);
     } on TimeoutException {
-      throw ApiException('요청 시간이 초과되었습니다. 다시 시도해주세요.');
+      throw ApiException(t('요청 시간이 초과되었습니다. 다시 시도해주세요.'));
     } on SocketException {
-      throw ApiException('서버 연결을 확인해주세요.');
+      throw ApiException(t('서버 연결을 확인해주세요.'));
     }
   }
 
@@ -2439,7 +2479,7 @@ class SafeByteApi {
     final response = await _postJson('/api/v1/auth/register', {
       'email': email.trim(),
       'password': password,
-      'display_name': displayName.trim().isEmpty ? '사용자' : displayName.trim(),
+      'display_name': displayName.trim().isEmpty ? t('사용자') : displayName.trim(),
       'profiles': profiles,
       'allergy_notes': allergyNotes.trim(),
     });
@@ -2469,7 +2509,7 @@ class SafeByteApi {
       '/api/v1/me/preferences',
       token: token,
       body: {
-        'display_name': displayName.trim().isEmpty ? '사용자' : displayName.trim(),
+        'display_name': displayName.trim().isEmpty ? t('사용자') : displayName.trim(),
         'profiles': profiles,
         'allergy_notes': allergyNotes.trim(),
       },
@@ -2510,11 +2550,11 @@ class SafeByteApi {
     try {
       streamed = await request.send().timeout(const Duration(seconds: 90));
     } on TimeoutException {
-      throw ApiException('분석 시간이 초과되었습니다. 촬영 상태와 연결을 확인해주세요.');
+      throw ApiException(t('분석 시간이 초과되었습니다. 촬영 상태와 연결을 확인해주세요.'));
     } on SocketException {
-      throw ApiException('서버에 연결하지 못했습니다. 네트워크 또는 배포 서버 상태를 확인해주세요.');
+      throw ApiException(t('서버에 연결하지 못했습니다. 네트워크 또는 배포 서버 상태를 확인해주세요.'));
     } on http.ClientException catch (error) {
-      throw ApiException('서버 요청에 실패했습니다. ${error.message}');
+      throw ApiException(tf('서버 요청에 실패했습니다. {0}', [error.message]));
     }
 
     final body = await streamed.stream.bytesToString();
@@ -2574,11 +2614,11 @@ class SafeByteApi {
     try {
       return await send().timeout(const Duration(seconds: 30));
     } on TimeoutException {
-      throw ApiException('요청 시간이 초과되었습니다. 다시 시도해주세요.');
+      throw ApiException(t('요청 시간이 초과되었습니다. 다시 시도해주세요.'));
     } on SocketException {
-      throw ApiException('서버에 연결하지 못했습니다. 네트워크 또는 배포 서버 상태를 확인해주세요.');
+      throw ApiException(t('서버에 연결하지 못했습니다. 네트워크 또는 배포 서버 상태를 확인해주세요.'));
     } on http.ClientException catch (error) {
-      throw ApiException('서버 요청에 실패했습니다. ${error.message}');
+      throw ApiException(tf('서버 요청에 실패했습니다. {0}', [error.message]));
     }
   }
 
@@ -2595,20 +2635,20 @@ class SafeByteApi {
     final codeSuffix = statusCode == null ? '' : ' (HTTP $statusCode)';
     final trimmed = body.trimLeft();
     if (trimmed.isEmpty) {
-      throw ApiException('서버 응답이 비어 있습니다$codeSuffix.');
+      throw ApiException(tf('서버 응답이 비어 있습니다{0}.', [codeSuffix]));
     }
     if (trimmed.startsWith('<')) {
       throw ApiException(
-        '서버가 앱용 JSON 대신 HTML 오류 페이지를 반환했습니다$codeSuffix. 잠시 후 다시 시도해주세요.',
+        tf('서버가 앱용 JSON 대신 HTML 오류 페이지를 반환했습니다{0}. 잠시 후 다시 시도해주세요.', [codeSuffix]),
       );
     }
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic>) return decoded;
     } on FormatException {
-      throw ApiException('서버 응답 형식이 올바르지 않습니다$codeSuffix.');
+      throw ApiException(tf('서버 응답 형식이 올바르지 않습니다{0}.', [codeSuffix]));
     }
-    throw ApiException('서버 응답을 읽지 못했습니다$codeSuffix.');
+    throw ApiException(tf('서버 응답을 읽지 못했습니다{0}.', [codeSuffix]));
   }
 
   String _errorMessage(Map<String, dynamic> payload, {int? statusCode}) {
@@ -2617,7 +2657,7 @@ class SafeByteApi {
     if (detail is Map<String, dynamic>) {
       return '${detail['message'] ?? detail}$suffix';
     }
-    return '${detail ?? '요청에 실패했습니다.'}$suffix';
+    return '${detail ?? t('요청에 실패했습니다.')}$suffix';
   }
 }
 
@@ -2654,7 +2694,7 @@ class AppUser {
     return AppUser(
       userId: json['user_id'] as String,
       email: json['email'] as String,
-      displayName: json['display_name'] as String? ?? '사용자',
+      displayName: json['display_name'] as String? ?? t('사용자'),
       profiles:
           (json['profiles'] as List<dynamic>).map((item) => '$item').toList(),
       allergyNotes: json['allergy_notes'] as String? ?? '',
@@ -2787,7 +2827,7 @@ class Detection {
       keyword: json['matched_keyword'] as String? ?? '',
       reason: json['reason'] as String? ?? '',
       occurrenceType: json['occurrence_type'] as String? ?? 'unknown',
-      label: json['occurrence_label'] as String? ?? '문맥 확인',
+      label: json['occurrence_label'] as String? ?? t('문맥 확인'),
     );
   }
 }
@@ -2850,22 +2890,22 @@ IconData resultIcon(String level) {
 String verdictTitle(String level) {
   switch (level) {
     case 'DANGER':
-      return '주의 성분이 있어요';
+      return t('주의 성분이 있어요');
     case 'CAUTION':
-      return '한 번 더 확인하세요';
+      return t('한 번 더 확인하세요');
     default:
-      return '현재 기준 통과';
+      return t('현재 기준 통과');
   }
 }
 
 String verdictSubtitle(AnalysisResult result) {
   switch (result.finalLevel) {
     case 'DANGER':
-      return '피해야 할 성분 ${result.directDetections.length}개가 포함되어 있어요.';
+      return tf('피해야 할 성분 {0}개가 포함되어 있어요.', [result.directDetections.length]);
     case 'CAUTION':
-      return '제조시설 공유 또는 확인 필요한 성분이 있습니다.';
+      return t('제조시설 공유 또는 확인 필요한 성분이 있습니다.');
     default:
-      return '선택한 기준에서 주요 위험 성분이 감지되지 않았습니다.';
+      return t('선택한 기준에서 주요 위험 성분이 감지되지 않았습니다.');
   }
 }
 
@@ -2893,6 +2933,8 @@ class AllergyBundle {
   final List<String> tokens;
 }
 
+// Raw Korean is the stored value that AllergyChoice.category is matched against.
+// The chips translate it for display with t(category).
 const allergyCategories = ['전체', '기본', '견과/곡물', '해산물', '육류', '과채/첨가물'];
 
 const allergyBundles = [
@@ -3064,16 +3106,16 @@ bool hasAllergySelection(Set<String> selected) {
 String profileLabel(String profile) {
   if (isAllergyToken(profile)) {
     final match = allergyChoices.where((choice) => choice.token == profile);
-    if (match.isNotEmpty) return match.first.label;
+    if (match.isNotEmpty) return t(match.first.label);
     return profile.split(':').last;
   }
   switch (profile) {
     case 'halal':
-      return '할랄';
+      return t('할랄');
     case 'vegan':
-      return '비건';
+      return t('비건');
     case 'allergy':
-      return '알레르기';
+      return t('알레르기');
     default:
       return profile;
   }
@@ -3082,13 +3124,13 @@ String profileLabel(String profile) {
 String profileDescription(String profile) {
   switch (profile) {
     case 'halal':
-      return '돼지고기·알코올·육류';
+      return t('돼지고기·알코올·육류');
     case 'vegan':
-      return '우유·계란·동물성 원료';
+      return t('우유·계란·동물성 원료');
     case 'allergy':
-      return '내 알레르기만 선택 검사';
+      return t('내 알레르기만 선택 검사');
     default:
-      return '사용자 기준';
+      return t('사용자 기준');
   }
 }
 

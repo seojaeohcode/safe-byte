@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+
+import 'l10n.dart';
 import 'package:flutter/services.dart';
 import 'main.dart';
 import 'cart_ble.dart';
@@ -201,13 +203,13 @@ class _WorkspaceListItem extends StatelessWidget {
 }
 
 String _cartVerdict(String level) =>
-    const {
-      'EMPTY': '아직 담은 상품이 없어요',
-      'SAFE': '선택 기준 통과',
-      'CAUTION': '확인이 필요한 상품',
-      'DANGER': '주의할 성분이 있어요',
+    {
+      'EMPTY': t('아직 담은 상품이 없어요'),
+      'SAFE': t('선택 기준 통과'),
+      'CAUTION': t('확인이 필요한 상품'),
+      'DANGER': t('주의할 성분이 있어요'),
     }[level] ??
-    '결과 확인';
+    t('결과 확인');
 
 String _historyDate(String value) {
   final date = DateTime.tryParse(value)?.toLocal();
@@ -216,12 +218,12 @@ String _historyDate(String value) {
 }
 
 String _historyVerdict(Map raw) =>
-    const {
-      'SAFE': '기준 통과',
-      'CAUTION': '확인 필요',
-      'DANGER': '주의 성분',
+    {
+      'SAFE': t('기준 통과'),
+      'CAUTION': t('확인 필요'),
+      'DANGER': t('주의 성분'),
     }[raw['final_level']] ??
-    (raw['status'] == 'completed' ? '결과 보기' : '분석 대기');
+    (raw['status'] == 'completed' ? t('결과 보기') : t('분석 대기'));
 
 IconData _resultIcon(Map raw) {
   switch ((raw['final_level'] ?? '').toString()) {
@@ -252,29 +254,29 @@ class _NutritionSummary extends StatelessWidget {
   final Map<String, dynamic> data;
   @override
   Widget build(BuildContext context) {
-    const labels = {
-      'energy_kcal': '열량',
-      'sodium_mg': '나트륨',
-      'carbohydrate_g': '탄수화물',
-      'sugars_g': '당류',
-      'fat_g': '지방',
-      'saturated_fat_g': '포화지방',
-      'protein_g': '단백질'
+    final labels = {
+      'energy_kcal': t('열량'),
+      'sodium_mg': t('나트륨'),
+      'carbohydrate_g': t('탄수화물'),
+      'sugars_g': t('당류'),
+      'fat_g': t('지방'),
+      'saturated_fat_g': t('포화지방'),
+      'protein_g': t('단백질')
     };
     final totals = data['totals'] as Map;
     return SurfacePanel(
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('확인한 영양성분', style: Theme.of(context).textTheme.titleLarge),
+      Text(t('확인한 영양성분'), style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 8),
-      if (totals.isEmpty) const Text('상품을 눌러 라벨의 영양성분을 확인하면 합계를 볼 수 있어요.'),
+      if (totals.isEmpty) Text(t('상품을 눌러 라벨의 영양성분을 확인하면 합계를 볼 수 있어요.')),
       for (final entry in totals.entries)
         Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Row(children: [
               Expanded(
                   child: Text(
-                      '${labels[entry.key] ?? entry.key} · ${data['covered_quantity'][entry.key]}개 기준')),
+                      tf('{0} · {1}개 기준', [labels[entry.key] ?? entry.key, data['covered_quantity'][entry.key]]))),
               Text(
                   '${entry.value} ${entry.key == 'energy_kcal' ? 'kcal' : entry.key == 'sodium_mg' ? 'mg' : 'g'}'),
             ])),
@@ -375,7 +377,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         builder: (_) => ProfileEditor(
           initialProfiles: defaults,
           cart: cart,
-          initialName: cart ? '나의 장보기' : '',
+          initialName: cart ? t('나의 장보기') : '',
           initialLanguage: widget.initialLanguage,
         ),
       ),
@@ -390,7 +392,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       });
       await _refresh();
       if (!cart && !widget.embedded && context.mounted) {
-        showSnack(context, '기준을 저장했어요.');
+        showSnack(context, t('기준을 저장했어요.'));
       }
     } catch (e) {
       if (context.mounted) showSnack(context, '$e');
@@ -492,7 +494,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: _loading ? null : _refresh,
-                  child: const Text('다시 시도'),
+                  child: Text(t('다시 시도')),
                 ),
               ],
             ),
@@ -506,26 +508,28 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       children: [
         _WorkspaceList(children: [
           _WorkspaceSectionTitle(
-            title: '가족 기준',
-            subtitle: '가족별로 선호 기준을 등록해 두면 분석 결과 적용이 빨라져요.',
+            title: t('가족 기준'),
+            subtitle: t('가족별로 선호 기준을 등록해 두면 분석 결과 적용이 빨라져요.'),
             icon: Icons.people_alt_rounded,
             iconColor: const Color(0xff3f6fa3),
             action: FilledButton.icon(
               onPressed: () => _create(false),
               icon: const Icon(Icons.person_add),
-              label: const Text('새 기준'),
+              label: Text(t('새 기준')),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xffe8f1f8),
                 foregroundColor: const Color(0xff3f6fa3),
+                // The shared theme asks for full width, which this row cannot give.
+                minimumSize: const Size(0, 44),
               ),
             ),
           ),
           const SizedBox(height: 16),
           if (_families.isEmpty)
-            const _WorkspaceEmptyState(
+            _WorkspaceEmptyState(
               icon: Icons.people_alt_outlined,
-              title: '등록된 가족 기준이 없습니다.',
-              message: '새 기준을 먼저 만들면 라벨 분석에서 빠르게 적용할 수 있어요.',
+              title: t('등록된 가족 기준이 없습니다.'),
+              message: t('새 기준을 먼저 만들면 라벨 분석에서 빠르게 적용할 수 있어요.'),
               // action omitted intentionally on empty baseline
             )
           else ...[
@@ -538,10 +542,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   iconColor: const Color(0xff3f6fa3),
                   title: '${raw['name']} · ${languages[raw['language']]}',
                   subtitle:
-                      '${List<String>.from(raw['profiles']).map(profileLabel).join(', ')} · 최근 사용 ${raw['updated_at'] == null ? '최근' : _historyDate(raw['updated_at'] as String)}',
+                      '${List<String>.from(raw['profiles']).map(profileLabel).join(', ')} · ${tf('최근 사용 {0}', [raw['updated_at'] == null ? t('최근') : _historyDate(raw['updated_at'] as String)])}',
                   onTap: () => _select(Map<String, dynamic>.from(raw)),
                   trailing: PopupMenuButton<String>(
-                    tooltip: '기준 작업',
+                    tooltip: t('기준 작업'),
                     icon: const Icon(Icons.more_horiz_rounded),
                     iconSize: 18,
                     color: _paper,
@@ -563,9 +567,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                         }
                       }
                     },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(value: 'edit', child: Text('기준 수정')),
-                      PopupMenuItem(value: 'delete', child: Text('가족 삭제')),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(value: 'edit', child: Text(t('기준 수정'))),
+                      PopupMenuItem(value: 'delete', child: Text(t('가족 삭제'))),
                     ],
                   ),
                 ),
@@ -574,17 +578,18 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         ]),
         _WorkspaceList(children: [
           _WorkspaceSectionTitle(
-            title: '장바구니',
-            subtitle: '분석한 라벨을 장바구니별로 분류하면 쇼핑 결정을 빠르게 할 수 있어요.',
+            title: t('장바구니'),
+            subtitle: t('분석한 라벨을 장바구니별로 분류하면 쇼핑 결정을 빠르게 할 수 있어요.'),
             icon: Icons.shopping_cart,
             iconColor: const Color(0xff1c8a63),
             action: FilledButton.icon(
               onPressed: () => _create(true),
               icon: const Icon(Icons.add_box),
-              label: const Text('새 장보기'),
+              label: Text(t('새 장보기')),
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xffe9f7f1),
                 foregroundColor: const Color(0xff1c8a63),
+                minimumSize: const Size(0, 44),
               ),
             ),
           ),
@@ -592,14 +597,14 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           if (_carts.isEmpty)
             _WorkspaceEmptyState(
               icon: Icons.shopping_cart_outlined,
-              title: '진행 중인 장바구니가 없습니다.',
-              message: '라벨 분석 후 장바구니에 담아 결과를 확인해 보세요.',
+              title: t('진행 중인 장바구니가 없습니다.'),
+              message: t('라벨 분석 후 장바구니에 담아 결과를 확인해 보세요.'),
               action: FilledButton(
                 onPressed: () => _create(true),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xff1c8a63),
                 ),
-                child: const Text('지금 장보기 시작'),
+                child: Text(t('지금 장보기 시작')),
               ),
             )
           else
@@ -610,7 +615,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   icon: Icons.shopping_cart,
                   iconColor: const Color(0xff1c8a63),
                   title: raw['name'] as String,
-                  subtitle: raw['status'] == 'active' ? '장보기 진행 중' : '완료됨',
+                  subtitle: raw['status'] == 'active' ? t('장보기 진행 중') : t('완료됨'),
                   onTap: () {
                     if (widget.embedded) {
                       _select(Map<String, dynamic>.from(raw));
@@ -618,7 +623,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     }
                     _openCart(Map<String, dynamic>.from(raw));
                   },
-                  trailing: Icon(
+                  trailing: const Icon(
                     Icons.chevron_right,
                     color: _mutedInk,
                   ),
@@ -627,17 +632,17 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         ]),
         _WorkspaceList(children: [
           _WorkspaceSectionTitle(
-            title: '분석 기록',
-            subtitle: '최근 분석한 라벨 기록에서 상세 판단을 확인하세요.',
+            title: t('분석 기록'),
+            subtitle: t('최근 분석한 라벨 기록에서 상세 판단을 확인하세요.'),
             icon: Icons.history,
             iconColor: const Color(0xff66727f),
           ),
           const SizedBox(height: 16),
           if (_history.isEmpty)
-            const _WorkspaceEmptyState(
+            _WorkspaceEmptyState(
               icon: Icons.receipt_long_outlined,
-              title: '아직 분석 기록이 없습니다.',
-              message: '라벨 분석 후 기록이 자동으로 쌓입니다.',
+              title: t('아직 분석 기록이 없습니다.'),
+              message: t('라벨 분석 후 기록이 자동으로 쌓입니다.'),
             )
           else
             for (final raw in _history)
@@ -646,7 +651,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 child: _WorkspaceListItem(
                   icon: _resultIcon(raw),
                   iconColor: _finalLevelColor(raw),
-                  title: raw['source_name'] as String? ?? '라벨',
+                  title: raw['source_name'] as String? ?? t('라벨'),
                   subtitle: _historyDate(raw['created_at'] as String),
                   onTap: () async {
                     if (raw['status'] == 'completed') {
@@ -679,7 +684,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         appBar: widget.embedded
             ? null
             : AppBar(
-                title: const Text('내 분석 자료'),
+                title: Text(t('내 분석 자료')),
                 actions: [
                   if (_loading)
                     const Padding(
@@ -692,7 +697,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   else
                     IconButton(
                       icon: const Icon(Icons.refresh_rounded),
-                      tooltip: '새로고침',
+                      tooltip: t('새로고침'),
                       onPressed: _refresh,
                     )
                 ],
@@ -708,10 +713,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     fontWeight: FontWeight.w500,
                     fontSize: 12,
                   ),
-                  tabs: const [
-                    Tab(text: '가족 기준', icon: Icon(Icons.people_outline)),
-                    Tab(text: '장바구니', icon: Icon(Icons.shopping_cart)),
-                    Tab(text: '기록', icon: Icon(Icons.history)),
+                  tabs: [
+                    Tab(text: t('가족 기준'), icon: const Icon(Icons.people_outline)),
+                    Tab(text: t('장바구니'), icon: const Icon(Icons.shopping_cart)),
+                    Tab(text: t('기록'), icon: const Icon(Icons.history)),
                   ],
                 ),
               ),
@@ -731,10 +736,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     unselectedLabelStyle: const TextStyle(
                       fontWeight: FontWeight.w500,
                     ),
-                    tabs: const [
-                      Tab(text: '가족 기준', icon: Icon(Icons.people_outline)),
-                      Tab(text: '장바구니', icon: Icon(Icons.shopping_cart)),
-                      Tab(text: '기록', icon: Icon(Icons.history)),
+                    tabs: [
+                      Tab(text: t('가족 기준'), icon: const Icon(Icons.people_outline)),
+                      Tab(text: t('장바구니'), icon: const Icon(Icons.shopping_cart)),
+                      Tab(text: t('기록'), icon: const Icon(Icons.history)),
                     ],
                     labelColor: theme.colorScheme.onSurface,
                     unselectedLabelColor: _mutedInk,
@@ -795,7 +800,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
       });
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(widget.cart ? '장보기 기준' : '가족 기준')),
+        appBar: AppBar(title: Text(widget.cart ? t('장보기 기준') : t('가족 기준'))),
         body: _WorkspaceList(children: [
           SurfacePanel(
               color: Colors.white,
@@ -804,19 +809,19 @@ class _ProfileEditorState extends State<ProfileEditor> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(widget.cart ? '함께 확인할 장보기 기준' : '가족에게 맞는 검사 기준',
+                    Text(widget.cart ? t('함께 확인할 장보기 기준') : t('가족에게 맞는 검사 기준'),
                         style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
-                    const Text('이름과 식이 기준을 정하고 결과를 읽을 언어를 선택하세요.'),
+                    Text(t('이름과 식이 기준을 정하고 결과를 읽을 언어를 선택하세요.')),
                     const SizedBox(height: 18),
                     TextField(
                         controller: _name,
                         maxLength: 80,
-                        decoration: const InputDecoration(labelText: '이름')),
+                        decoration: InputDecoration(labelText: t('이름'))),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                         initialValue: _language,
-                        decoration: const InputDecoration(labelText: '결과 언어'),
+                        decoration: InputDecoration(labelText: t('결과 언어')),
                         items: languages.entries
                             .map((e) => DropdownMenuItem(
                                 value: e.key, child: Text(e.value)))
@@ -830,7 +835,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
                     FilledButton(
                         onPressed: () {
                           if (_name.text.trim().isEmpty || _profiles.isEmpty) {
-                            showSnack(context, '이름과 검사 기준을 입력해주세요.');
+                            showSnack(context, t('이름과 검사 기준을 입력해주세요.'));
                             return;
                           }
                           Navigator.pop(context, {
@@ -839,7 +844,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
                             'language': _language
                           });
                         },
-                        child: const Text('저장')),
+                        child: Text(t('저장'))),
                   ]))
         ]),
       );
@@ -888,14 +893,14 @@ class _CartScreenState extends State<CartScreen> {
       await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
-                title: const Text('카트 연결'),
+                title: Text(t('카트 연결')),
                 content: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('5분 안에 카트 화면에 코드를 입력하세요. 한 번만 사용할 수 있습니다.'),
+                  Text(t('5분 안에 카트 화면에 코드를 입력하세요. 한 번만 사용할 수 있습니다.')),
                   SelectableText(data['code'] as String),
                   TextButton(
                       onPressed: () => Clipboard.setData(
                           ClipboardData(text: data['code'] as String)),
-                      child: const Text('코드 복사')),
+                      child: Text(t('코드 복사'))),
                   FilledButton.icon(
                       onPressed: () => Navigator.push(
                           context,
@@ -903,12 +908,12 @@ class _CartScreenState extends State<CartScreen> {
                               builder: (_) =>
                                   CartBleScreen(code: data['code'] as String))),
                       icon: const Icon(Icons.bluetooth),
-                      label: const Text('Bluetooth로 전송')),
+                      label: Text(t('Bluetooth로 전송'))),
                 ]),
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('닫기'))
+                      child: Text(t('닫기')))
                 ],
               ));
     } catch (e) {
@@ -931,14 +936,14 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _nutrition(Map<String, dynamic> item) async {
-    const labels = {
-      'energy_kcal': '열량 kcal',
-      'sodium_mg': '나트륨 mg',
-      'carbohydrate_g': '탄수화물 g',
-      'sugars_g': '당류 g',
-      'fat_g': '지방 g',
-      'saturated_fat_g': '포화지방 g',
-      'protein_g': '단백질 g'
+    final labels = {
+      'energy_kcal': t('열량 kcal'),
+      'sodium_mg': t('나트륨 mg'),
+      'carbohydrate_g': t('탄수화물 g'),
+      'sugars_g': t('당류 g'),
+      'fat_g': t('지방 g'),
+      'saturated_fat_g': t('포화지방 g'),
+      'protein_g': t('단백질 g')
     };
     final current = item['nutrition'] as Map? ?? {};
     final fields = {
@@ -949,12 +954,12 @@ class _CartScreenState extends State<CartScreen> {
       final values = await showDialog<Map<String, dynamic>>(
           context: context,
           builder: (ctx) => AlertDialog(
-                title: const Text('상품 1개 전체 기준 확인'),
+                title: Text(t('상품 1개 전체 기준 확인')),
                 content: SingleChildScrollView(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('100g당·1회분 표시라면 상품 전체 양으로 환산하세요. 모르는 값은 비워두세요.'),
+                  Text(t('100g당·1회분 표시라면 상품 전체 양으로 환산하세요. 모르는 값은 비워두세요.')),
                   const SizedBox(height: 12),
-                  const Text('사진에서 읽은 값 · 아직 확인하지 않았어요'),
+                  Text(t('사진에서 읽은 값 · 아직 확인하지 않았어요')),
                   for (final entry
                       in ((item['nutrition_candidate']?['values'] as Map?) ??
                               {})
@@ -971,7 +976,7 @@ class _CartScreenState extends State<CartScreen> {
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('취소')),
+                      child: Text(t('취소'))),
                   FilledButton(
                       onPressed: () {
                         final data = <String, dynamic>{};
@@ -980,14 +985,14 @@ class _CartScreenState extends State<CartScreen> {
                           final value =
                               double.tryParse(entry.value.text.trim());
                           if (value == null || !value.isFinite || value < 0) {
-                            showSnack(ctx, '0 이상의 숫자를 입력하세요.');
+                            showSnack(ctx, t('0 이상의 숫자를 입력하세요.'));
                             return;
                           }
                           data[entry.key] = value;
                         }
                         Navigator.pop(ctx, data);
                       },
-                      child: const Text('라벨 확인 · 저장'))
+                      child: Text(t('라벨 확인 · 저장')))
                 ],
               ));
       if (values != null) {
@@ -1047,19 +1052,19 @@ class _CartScreenState extends State<CartScreen> {
           final name = await showDialog<String>(
               context: context,
               builder: (ctx) => AlertDialog(
-                      title: const Text('상품 이름'),
+                      title: Text(t('상품 이름')),
                       content: TextField(
                           controller: field, maxLength: 150, autofocus: true),
                       actions: [
                         TextButton(
                             onPressed: () => Navigator.pop(ctx),
-                            child: const Text('취소')),
+                            child: Text(t('취소'))),
                         TextButton(
                             onPressed: () {
                               if (field.text.trim().isNotEmpty)
                                 Navigator.pop(ctx, field.text.trim());
                             },
-                            child: const Text('저장'))
+                            child: Text(t('저장')))
                       ]));
           if (name != null)
             await _quantity({...item, 'name': name}, item['quantity'] as int);
@@ -1094,7 +1099,7 @@ class _CartScreenState extends State<CartScreen> {
                       Text(_cartVerdict(_report!['final_level'] as String),
                           style: Theme.of(context).textTheme.headlineSmall),
                       const SizedBox(height: 8),
-                      Text('장바구니에 총 ${_report!['total_quantity']}개 담았어요'),
+                      Text(tf('장바구니에 총 {0}개 담았어요', [_report!['total_quantity']])),
                       if ((_report!['total_quantity'] as num) > 0) ...[
                         const SizedBox(height: 12),
                         Wrap(spacing: 8, runSpacing: 8, children: [
@@ -1103,7 +1108,7 @@ class _CartScreenState extends State<CartScreen> {
                             if ((entry.value as num) > 0)
                               Chip(
                                   label: Text(
-                                      '${_cartVerdict(entry.key as String)} ${entry.value}개'))
+                                      tf('{0} {1}개', [_cartVerdict(entry.key as String), entry.value])))
                         ]),
                       ],
                     ])),
@@ -1116,14 +1121,14 @@ class _CartScreenState extends State<CartScreen> {
                       onPressed: () => Navigator.pop(context,
                           {...widget.cart, 'cart_id': widget.cart['id']}),
                       icon: const Icon(Icons.camera_alt),
-                      label: const Text('이 기준으로 스캔')),
+                      label: Text(t('이 기준으로 스캔'))),
                   OutlinedButton.icon(
                       onPressed: _busy ? null : _pair,
                       icon: const Icon(Icons.link),
-                      label: const Text('카트 기기 연결')),
+                      label: Text(t('카트 기기 연결'))),
                   OutlinedButton(
                       onPressed: _busy ? null : _close,
-                      child: const Text('장보기 종료')),
+                      child: Text(t('장보기 종료'))),
                 ],
                 const SizedBox(height: 16),
                 for (final item in _report!['items'] as List)
@@ -1138,7 +1143,7 @@ class _CartScreenState extends State<CartScreen> {
                         ? null
                         : Row(mainAxisSize: MainAxisSize.min, children: [
                             IconButton(
-                                tooltip: '수량 줄이기',
+                                tooltip: t('수량 줄이기'),
                                 icon: const Icon(Icons.remove),
                                 onPressed: _busy || item['quantity'] <= 1
                                     ? null
@@ -1146,7 +1151,7 @@ class _CartScreenState extends State<CartScreen> {
                                         Map<String, dynamic>.from(item),
                                         (item['quantity'] as int) - 1)),
                             IconButton(
-                                tooltip: '수량 늘리기',
+                                tooltip: t('수량 늘리기'),
                                 icon: const Icon(Icons.add),
                                 onPressed: _busy || item['quantity'] >= 100
                                     ? null
@@ -1155,18 +1160,18 @@ class _CartScreenState extends State<CartScreen> {
                                         (item['quantity'] as int) + 1)),
                             PopupMenuButton<String>(
                                 enabled: !_busy,
-                                tooltip: '상품 관리',
+                                tooltip: t('상품 관리'),
                                 onSelected: (action) => _itemAction(
                                     Map<String, dynamic>.from(item), action),
-                                itemBuilder: (_) => const [
+                                itemBuilder: (_) => [
                                       PopupMenuItem(
-                                          value: 'name', child: Text('상품명 수정')),
+                                          value: 'name', child: Text(t('상품명 수정'))),
                                       PopupMenuItem(
                                           value: 'nutrition',
-                                          child: Text('영양성분 확인')),
+                                          child: Text(t('영양성분 확인'))),
                                       PopupMenuItem(
                                           value: 'remove',
-                                          child: Text('장바구니에서 빼기')),
+                                          child: Text(t('장바구니에서 빼기'))),
                                     ]),
                           ]),
                   )),
@@ -1191,9 +1196,9 @@ class ResultExtras extends StatelessWidget {
           showDragHandle: true,
           builder: (ctx) => SafeArea(
                   child: ListView(shrinkWrap: true, children: [
-                const ListTile(
-                    title: Text('담을 장바구니를 선택하세요'),
-                    subtitle: Text('분석할 때와 같은 검사 기준의 장바구니에 담을 수 있어요.')),
+                ListTile(
+                    title: Text(t('담을 장바구니를 선택하세요')),
+                    subtitle: Text(t('분석할 때와 같은 검사 기준의 장바구니에 담을 수 있어요.'))),
                 for (final cart in carts)
                   ListTile(
                       leading: const Icon(Icons.shopping_bag_outlined),
@@ -1205,13 +1210,13 @@ class ResultExtras extends StatelessWidget {
                           Navigator.pop(ctx, Map<String, dynamic>.from(cart))),
                 ListTile(
                     leading: const Icon(Icons.add),
-                    title: const Text('이 기준으로 새 장보기'),
+                    title: Text(t('이 기준으로 새 장보기')),
                     onTap: () => Navigator.pop(ctx, <String, dynamic>{})),
               ])));
       if (selected == null) return;
       final cart = selected.isEmpty
           ? await api!.request('POST', '/api/v1/carts', token!, body: {
-              'name': '나의 장보기',
+              'name': t('나의 장보기'),
               'profiles': result.extra['profiles'],
               'language': result.extra['translation']?['language'] ?? 'ko',
             })
@@ -1223,7 +1228,7 @@ class ResultExtras extends StatelessWidget {
         await api!.request('POST', '/api/v1/carts/${cart['id']}/items', token!,
             body: {
               'request_id': result.requestId,
-              'name': '스캔한 상품',
+              'name': t('스캔한 상품'),
               'quantity': 1
             });
       }
@@ -1248,30 +1253,30 @@ class ResultExtras extends StatelessWidget {
           context: context,
           builder: (ctx) => StatefulBuilder(
               builder: (ctx, update) => AlertDialog(
-                    title: const Text('식약처 정보 조회'),
+                    title: Text(t('식약처 정보 조회')),
                     content: Column(mainAxisSize: MainAxisSize.min, children: [
                       DropdownButton<String>(
                           value: kind,
-                          items: const [
+                          items: [
                             DropdownMenuItem(
-                                value: 'nutrition', child: Text('식품')),
+                                value: 'nutrition', child: Text(t('식품'))),
                             DropdownMenuItem(
-                                value: 'ingredient', child: Text('원료'))
+                                value: 'ingredient', child: Text(t('원료')))
                           ],
                           onChanged: (v) => update(() => kind = v!)),
                       TextField(
                           controller: name,
                           maxLength: 100,
                           decoration:
-                              const InputDecoration(labelText: '라벨에 적힌 이름')),
+                              InputDecoration(labelText: t('라벨에 적힌 이름'))),
                     ]),
                     actions: [
                       TextButton(
                           onPressed: () => Navigator.pop(ctx),
-                          child: const Text('취소')),
+                          child: Text(t('취소'))),
                       TextButton(
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('조회'))
+                          child: Text(t('조회')))
                     ],
                   )));
       if (accepted != true || name.text.trim().length < 2) return;
@@ -1282,7 +1287,7 @@ class ResultExtras extends StatelessWidget {
       await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-                title: const Text('공공 DB 참고 결과'),
+                title: Text(t('공공 DB 참고 결과')),
                 content: SizedBox(
                     width: 360,
                     child: SingleChildScrollView(
@@ -1290,7 +1295,7 @@ class ResultExtras extends StatelessWidget {
                             Column(mainAxisSize: MainAxisSize.min, children: [
                       Text(data['note'] as String),
                       if ((data['items'] as List).isEmpty)
-                        Text('조회 상태: ${data['status']}'),
+                        Text(tf('조회 상태: {0}', [data['status']])),
                       for (final item in data['items'] as List)
                         ListTile(
                             title: Text(item['name'] as String),
@@ -1304,7 +1309,7 @@ class ResultExtras extends StatelessWidget {
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('닫기'))
+                      child: Text(t('닫기')))
                 ],
               ));
     } catch (e) {
@@ -1321,23 +1326,23 @@ class ResultExtras extends StatelessWidget {
       final accepted = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-                title: Text(save ? '상품 라벨 저장' : '대체 상품'),
+                title: Text(save ? t('상품 라벨 저장') : t('대체 상품')),
                 content: Column(mainAxisSize: MainAxisSize.min, children: [
                   if (save)
                     TextField(
                         controller: name,
-                        decoration: const InputDecoration(labelText: '상품명')),
+                        decoration: InputDecoration(labelText: t('상품명'))),
                   TextField(
                       controller: category,
-                      decoration: const InputDecoration(labelText: '상품 분류')),
+                      decoration: InputDecoration(labelText: t('상품 분류'))),
                 ]),
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('취소')),
+                      child: Text(t('취소'))),
                   TextButton(
                       onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('확인'))
+                      child: Text(t('확인')))
                 ],
               ));
       if (accepted != true ||
@@ -1357,22 +1362,22 @@ class ResultExtras extends StatelessWidget {
                 });
       if (!context.mounted) return;
       if (save) {
-        showSnack(context, '저장했습니다.');
+        showSnack(context, t('저장했습니다.'));
       } else {
         await showDialog<void>(
             context: context,
             builder: (ctx) => AlertDialog(
-                    title: const Text('대체 상품'),
+                    title: Text(t('대체 상품')),
                     content: SingleChildScrollView(
                         child: Text((data['products'] as List).isEmpty
-                            ? '같은 분류로 저장한 상품이 없습니다.'
+                            ? t('같은 분류로 저장한 상품이 없습니다.')
                             : (data['products'] as List)
                                 .map((p) => p['name'])
                                 .join('\n'))),
                     actions: [
                       TextButton(
                           onPressed: () => Navigator.pop(ctx),
-                          child: const Text('닫기'))
+                          child: Text(t('닫기')))
                     ]));
       }
     } catch (e) {
@@ -1393,21 +1398,21 @@ class ResultExtras extends StatelessWidget {
         OutlinedButton.icon(
             onPressed: () => _addToCart(context),
             icon: const Icon(Icons.shopping_bag_outlined),
-            label: const Text('장바구니에 담기')),
+            label: Text(t('장바구니에 담기'))),
         const SizedBox(height: 8),
         Wrap(spacing: 8, children: [
           TextButton.icon(
               onPressed: () => _products(context, true),
               icon: const Icon(Icons.bookmark_add_outlined),
-              label: const Text('상품 저장')),
+              label: Text(t('상품 저장'))),
           TextButton.icon(
               onPressed: () => _products(context, false),
               icon: const Icon(Icons.swap_horiz),
-              label: const Text('대체 상품')),
+              label: Text(t('대체 상품'))),
           TextButton.icon(
               onPressed: () => _reference(context),
               icon: const Icon(Icons.search),
-              label: const Text('식약처 정보')),
+              label: Text(t('식약처 정보'))),
         ]),
       ],
       if (translation != null && translation['language'] != 'ko')
@@ -1426,7 +1431,7 @@ class ResultExtras extends StatelessWidget {
                           in translation['detections'] as List? ?? [])
                         Text(text as String),
                       if (translation['status'] != 'translated')
-                        const Text('요약 번역입니다. 원문도 함께 확인하세요.'),
+                        Text(t('요약 번역입니다. 원문도 함께 확인하세요.')),
                     ]))),
       if (preview != null)
         AspectRatio(
@@ -1530,22 +1535,22 @@ class _SavedProductsScreenState extends State<SavedProductsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('저장한 상품')),
+      appBar: AppBar(title: Text(t('저장한 상품'))),
       body: _error != null
           ? Center(
               child: TextButton(
-                  onPressed: _refresh, child: Text('다시 불러오기: $_error')))
+                  onPressed: _refresh, child: Text(tf('다시 불러오기: {0}', [_error]))))
           : _products == null
               ? const Center(child: CircularProgressIndicator())
               : _WorkspaceList(children: [
                   if (_products!.isEmpty)
-                    const SurfacePanel(
+                    SurfacePanel(
                         child: Column(children: [
-                      Icon(Icons.bookmark_border, size: 44),
-                      SizedBox(height: 16),
-                      Text('다시 확인하고 싶은 상품을 모아보세요.'),
-                      SizedBox(height: 8),
-                      Text('라벨 분석 결과에서 상품을 저장할 수 있어요.')
+                      const Icon(Icons.bookmark_border, size: 44),
+                      const SizedBox(height: 16),
+                      Text(t('다시 확인하고 싶은 상품을 모아보세요.')),
+                      const SizedBox(height: 8),
+                      Text(t('라벨 분석 결과에서 상품을 저장할 수 있어요.'))
                     ])),
                   for (final item in _products!)
                     Card(
@@ -1555,7 +1560,7 @@ class _SavedProductsScreenState extends State<SavedProductsScreen> {
                             onTap: () =>
                                 _open(item['source_request_id'] as String),
                             trailing: IconButton(
-                                tooltip: '저장 취소',
+                                tooltip: t('저장 취소'),
                                 icon:
                                     const Icon(Icons.bookmark_remove_outlined),
                                 onPressed: () async {

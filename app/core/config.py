@@ -39,8 +39,6 @@ class Settings(BaseSettings):
     openai_model: str = 'gpt-4o-mini'
     llm_daily_limit: int = Field(default=100, ge=0)
     llm_timeout_seconds: int = 15
-    deepl_auth_key: str | None = None
-    deepl_api_url: str = "https://api-free.deepl.com/v2/translate"
     translation_enabled: bool = False
     catalog_path: Path = Path("data/products.json")
 

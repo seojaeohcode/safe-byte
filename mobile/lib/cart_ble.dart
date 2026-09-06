@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+
+import 'l10n.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -37,7 +39,7 @@ class _CartBleScreenState extends State<CartBleScreen> {
   StreamSubscription<DiscoveredDevice>? _scan;
   StreamSubscription<ConnectionStateUpdate>? _connection;
   Timer? _timer;
-  String _status = 'Bluetooth 준비 중';
+  String _status = t('Bluetooth 준비 중');
   bool _busy = false;
   @override
   void initState() {
@@ -49,7 +51,7 @@ class _CartBleScreenState extends State<CartBleScreen> {
     if (kIsWeb) {
       setState(() {
         _status =
-            'Bluetooth 연결은 Android 앱에서 사용할 수 있어요. 웹에서는 페어링 코드를 카트 화면에 입력해주세요.';
+            t('Bluetooth 연결은 Android 앱에서 사용할 수 있어요. 웹에서는 페어링 코드를 카트 화면에 입력해주세요.');
       });
       return;
     }
@@ -67,23 +69,23 @@ class _CartBleScreenState extends State<CartBleScreen> {
       if (!mounted) {
         return;
       }
-      setState(() => _status = '연결할 카트를 선택하세요 / Select a cart');
+      setState(() => _status = t('연결할 카트를 선택하세요 / Select a cart'));
       _scan = _ble.scanForDevices(withServices: [cartService]).listen((d) {
         if (mounted) setState(() => _devices[d.id] = d);
       }, onError: (Object e) {
-        if (mounted) setState(() => _status = 'Bluetooth 검색 실패: $e');
+        if (mounted) setState(() => _status = tf('Bluetooth 검색 실패: {0}', [e]));
       });
       _timer = Timer(const Duration(seconds: 15), () {
         _scan?.cancel();
         if (mounted && _devices.isEmpty) {
           setState(() {
-            _status = '카트를 찾지 못했습니다. 카트의 BLE를 켜주세요.';
+            _status = t('카트를 찾지 못했습니다. 카트의 BLE를 켜주세요.');
           });
         }
       });
     } catch (e) {
       if (mounted) {
-        setState(() => _status = 'Bluetooth 권한과 전원을 확인해주세요.');
+        setState(() => _status = t('Bluetooth 권한과 전원을 확인해주세요.'));
       }
     }
   }
@@ -92,7 +94,7 @@ class _CartBleScreenState extends State<CartBleScreen> {
     if (_busy) return;
     setState(() {
       _busy = true;
-      _status = '연결 중 / Connecting';
+      _status = t('연결 중 / Connecting');
     });
     await _scan?.cancel();
     final connected = Completer<void>();
@@ -124,12 +126,12 @@ class _CartBleScreenState extends State<CartBleScreen> {
       }
       if (mounted) {
         setState(() {
-          _status = '코드를 전송했습니다. 카트 LCD에서 연결 완료를 확인하세요.';
+          _status = t('코드를 전송했습니다. 카트 LCD에서 연결 완료를 확인하세요.');
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _status = '연결 실패: $e');
+        setState(() => _status = tf('연결 실패: {0}', [e]));
       }
     } finally {
       await _connection?.cancel();
@@ -148,7 +150,7 @@ class _CartBleScreenState extends State<CartBleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bluetooth 카트 연결')),
+      appBar: AppBar(title: Text(t('Bluetooth 카트 연결'))),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
@@ -172,12 +174,12 @@ class _CartBleScreenState extends State<CartBleScreen> {
             if (_devices.isEmpty && !_busy) ...[
               _BlePanel(
                 child: Column(
-                  children: const [
-                    Icon(Icons.bluetooth_searching_rounded, size: 34),
-                    SizedBox(height: 10),
-                    Text('카트를 찾고 있어요.'),
-                    SizedBox(height: 6),
-                    Text('카트 전원을 켜고 앱과 가까이 두어 주세요.'),
+                  children: [
+                    const Icon(Icons.bluetooth_searching_rounded, size: 34),
+                    const SizedBox(height: 10),
+                    Text(t('카트를 찾고 있어요.')),
+                    const SizedBox(height: 6),
+                    Text(t('카트 전원을 켜고 앱과 가까이 두어 주세요.')),
                   ],
                 ),
               ),
@@ -190,7 +192,7 @@ class _CartBleScreenState extends State<CartBleScreen> {
                         device.name.isEmpty ? 'SafeByte Cart' : device.name),
                     subtitle: Text(device.id),
                     trailing: Text('${device.rssi} dBm',
-                        style: TextStyle(color: _mutedInk)),
+                        style: const TextStyle(color: _mutedInk)),
                     onTap: _busy ? null : () => _send(device),
                   ),
                 )),

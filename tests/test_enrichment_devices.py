@@ -52,6 +52,71 @@ def test_model_hallucination_rejected_and_cached(tmp_path, monkeypatch, provider
     assert len(calls)==1
 
 
+def test_evidence_is_cut_from_the_label_not_from_the_model(tmp_path, monkeypatch):
+    label = '원재료명: 쌀, 정제소금'
+    payload = json.dumps({'ingredients': [
+        {'name': '정제소금', 'evidence': '원재료명: 정제소금'},   # evidence never appears in the label
+        {'name': '설탕', 'evidence': '원재료명: 설탕'},          # ingredient never appears either
+    ]}, ensure_ascii=False)
+    monkeypatch.setattr(httpx, 'post', lambda url, **kwargs: httpx.Response(
+        200, json={'status':'completed','output':[{'content':[{'type':'output_text','text':payload}]}]},
+        request=httpx.Request('POST', url)))
+    settings = Settings(_env_file=None, llm_enabled=True, llm_provider='openai', openai_api_key='test')
+    output = EnrichmentService(settings, Database(tmp_path/'evidence.db')).ingredients(label)
+    assert [x['name'] for x in output['ingredients']] == ['정제소금']
+    assert output['ingredients'][0]['evidence'] in label
+    assert output['rejected_count'] == 1
+
+
+def _risk():
+    return {'final_level': 'DANGER', 'summary': '직접 함유 주의 성분: 우유',
+            'detections': [{'canonical_name': '우유', 'reason': '우유는 표시 대상입니다.',
+                            'rule_id': 'allergy_milk', 'category': 'allergy', 'severity': 'danger',
+                            'matched_keyword': '우유', 'occurrence_type': 'direct'}]}
+
+
+def test_gpt_translation_is_cached_and_leaves_korean_alone(tmp_path, monkeypatch):
+    payload = json.dumps({'translations': ['Directly contained: Milk', 'Milk: Milk must be declared.']})
+    calls = []
+    def post(url, **kwargs):
+        calls.append(url)
+        return httpx.Response(200, json={'status':'completed','output':[{'content':[{'type':'output_text','text':payload}]}]},
+                              request=httpx.Request('POST', url))
+    monkeypatch.setattr(httpx, 'post', post)
+    settings = Settings(_env_file=None, translation_enabled=True, openai_api_key='test')
+    service = EnrichmentService(settings, Database(tmp_path/'translate.db'))
+    result = service.translation(_risk(), 'en')
+    assert result['status'] == 'translated' and result['provider'] == 'openai'
+    assert result['summary'] == 'Directly contained: Milk'
+    assert result['detections'] == ['Milk: Milk must be declared.']
+    assert service.translation(_risk(), 'en')['cached'] is True
+    assert len(calls) == 1
+    korean = service.translation(_risk(), 'ko')
+    assert korean['status'] == 'original' and korean['summary'] == _risk()['summary']
+    assert len(calls) == 1
+
+
+def test_bad_translation_falls_back_to_reviewed_vocabulary(tmp_path, monkeypatch):
+    # A short response would silently drop a warning, so the reviewed wording must win.
+    payload = json.dumps({'translations': ['Directly contained: Milk']})
+    monkeypatch.setattr(httpx, 'post', lambda url, **kwargs: httpx.Response(
+        200, json={'status':'completed','output':[{'content':[{'type':'output_text','text':payload}]}]},
+        request=httpx.Request('POST', url)))
+    settings = Settings(_env_file=None, translation_enabled=True, openai_api_key='test')
+    result = EnrichmentService(settings, Database(tmp_path/'fallback.db')).translation(_risk(), 'en')
+    assert result['status'] == 'fallback'
+    assert result['summary'] == 'An ingredient conflicts with your dietary criteria.'
+    assert result['detections'] and 'Milk' in result['detections'][0]
+
+
+def test_translation_stops_at_the_daily_openai_quota(tmp_path, monkeypatch):
+    monkeypatch.setattr(httpx, 'post', lambda url, **kwargs: pytest.fail('quota must be checked before calling OpenAI'))
+    settings = Settings(_env_file=None, translation_enabled=True, openai_api_key='test', llm_daily_limit=0)
+    result = EnrichmentService(settings, Database(tmp_path/'quota.db')).translation(_risk(), 'ja')
+    assert result['status'] == 'quota_exceeded'
+    assert result['summary'] == '食事基準に合わない成分が検出されました。'
+
+
 def test_cart_device_erases_revoked_session():
     def handle(request):
         if request.url.path.endswith('redeem'):

@@ -6,6 +6,8 @@
 - 백엔드: FastAPI + SQLite + Redis, Nginx 리버스 프록시, Docker Compose
 - OCR: NAVER CLOVA General OCR V2 (일일 호출 한도·캐시로 비용 통제)
 - 판정: `data/risk_rules.json` 기반 규칙 엔진 (직접 원재료 / 교차 접촉 / 문맥 불명 구분)
+- 보강: OpenAI(gpt-4o-mini)로 원재료명 정리와 결과 번역. 모델은 판정을 바꾸지 못합니다
+- 다국어: 앱 화면 전체가 한국어·영어·아랍어·중국어·일본어로 전환되며 아랍어는 RTL 레이아웃
 - 앱: Flutter (Android + Web 동일 코드), 카트 기기 연동(BLE, Raspberry Pi + Arduino Nano)
 - 인프라: Terraform으로 NAVER Cloud Platform(VPC) 프로비저닝 + 애플리케이션 배포
 
@@ -121,6 +123,7 @@ Raspberry Pi 카트 클라이언트  ─┤
 웹 OCR 랩 (/lab)             ─┘                  │
                                                  ├─→ CLOVA OCR V2 (일일 한도 + 캐시)
                                                  ├─→ OCR 보정 → 규칙 엔진 → SAFE/CAUTION/DANGER
+                                                 ├─→ OpenAI gpt-4o-mini (성분 정리 / 결과 번역, 판정에는 관여 안 함)
                                                  └─→ SQLite(영구) + Redis(핫 캐시)
 ```
 
@@ -135,6 +138,9 @@ app/                     FastAPI 백엔드
                          auth, cache, enrichment, localization, nutrition, vision
 data/risk_rules.json     위험 판정 규칙 사전
 mobile/                  Flutter 앱 (Android + Web)
+  lib/l10n.dart          언어 선택·저장, t()/tf() 조회, 언어 선택 시트
+  lib/l10n_data.dart     생성물: 한국어 원문을 키로 하는 5개 언어 UI 카탈로그
+scripts/build_l10n.py    UI 카탈로그 생성기 (+ scripts/l10n_cache.json)
 hardware/                Raspberry Pi 키오스크 / Arduino Nano 펌웨어 / 케이스
 web/                     경량 OCR 개발 도구(/lab) + Flutter 웹 산출물 배포 위치
 deploy/                  nginx.conf, Caddyfile(HTTPS)
@@ -165,6 +171,20 @@ python -m uvicorn app.main:app --reload --port 8000
 기본 `.env`는 `OCR_PROVIDER=clova`, `ALLOW_PAID_OCR=false`입니다. 키가 없으면 유료 OCR은 차단되고
 `analyze/text` 또는 `ocr_mode=mock`으로 개발할 수 있습니다.
 
+### OpenAI 연동
+
+`OPENAI_API_KEY`를 넣고 `LLM_ENABLED=true`, `LLM_PROVIDER=openai`, `TRANSLATION_ENABLED=true`로 두면
+두 가지가 켜집니다. 둘 다 `LLM_DAILY_LIMIT`(기본 100회, 서버 전체 합계)을 각각 따로 소비하며
+결과는 SQLite에 캐시됩니다.
+
+| 기능 | 동작 | 실패했을 때 |
+|---|---|---|
+| 원재료명 정리 | 라벨에 **그대로 있는** 이름만 남기고, 근거 문장은 모델이 아니라 라벨에서 잘라 붙입니다 | 쉼표 분리 사전 방식으로 폴백 |
+| 결과 번역 | 요약과 위험 사유를 선택 언어로 번역 | 검수된 어휘 번역(`localization.py`)으로 폴백 |
+
+모델이 만들어낸 성분은 버려지고(`rejected_count`로 표시), 번역 개수가 원문과 다르면 통째로 폴백합니다.
+**모델 출력이 SAFE/CAUTION/DANGER 판정을 바꾸는 경로는 없습니다.**
+
 ### Docker로 실행
 
 ```powershell
@@ -178,8 +198,8 @@ curl http://127.0.0.1:8080/health
 ### 테스트
 
 ```powershell
-python -m pytest -q                          # 백엔드 28개
-python scripts/mobile_check.py test --no-pub # Flutter 위젯/골든 테스트
+python -m pytest -q                          # 백엔드 32개
+python scripts/mobile_check.py test --no-pub # Flutter 위젯·골든 11개
 python scripts/mobile_check.py analyze --no-pub
 ```
 
@@ -329,6 +349,23 @@ USB 연결 실기기에서는 `adb reverse tcp:8080 tcp:8080`을 함께 씁니�
 
 화면 흐름: 가입/로그인 → 기준 선택 → 촬영 → 큰 판정 먼저 → 필요할 때만 근거 상세.
 웹에서는 BLE 대신 카트 화면에 페어링 코드를 직접 입력합니다.
+
+### 화면 언어 바꾸기
+
+버튼·메뉴·안내 문구까지 화면 전체가 **한국어·English·العربية·中文·日本語**로 바뀝니다.
+한국어를 못 읽는 사용자도 바꿀 수 있도록 **로그인 화면 우측 상단**에 언어 버튼이 있고,
+로그인 후에는 `내 정보 → 언어`에서 바꿉니다. 선택은 기기에 저장되고, 아랍어는 화면 전체가 RTL로 바뀝니다.
+
+번역 문구는 한국어 원문을 키로 쓰는 카탈로그 `mobile/lib/l10n_data.dart`에 들어 있습니다.
+번역이 없는 문구는 빈칸이 아니라 한국어로 표시됩니다. 한국어 문구를 추가·수정한 뒤에는:
+
+```powershell
+python scripts/build_l10n.py          # 새로 생긴 문구만 번역해 카탈로그 재생성
+python scripts/build_l10n.py --all    # 전부 다시 번역
+```
+
+`scripts/l10n_cache.json`이 커밋되어 있어서 평소 빌드는 OpenAI를 호출하지 않습니다.
+위젯 코드에서는 `t('한국어 문구')`, 값이 끼어드는 문구는 `tf('{0}개 담았어요', [n])`을 씁니다.
 
 ---
 
