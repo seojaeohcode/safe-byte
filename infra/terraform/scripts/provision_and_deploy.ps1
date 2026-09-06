@@ -11,18 +11,17 @@ $ProjectRoot = Resolve-Path (Join-Path $ScriptDir "..\..\..")
 $TerraformExe = Join-Path $ProjectRoot ".tools\terraform\terraform.exe"
 
 & $Tf init
-& $Tf plan
+& $Tf plan -var=deploy_application=true
 
 if ($AutoApprove) {
-    & $Tf apply -auto-approve
+    & $Tf apply -var=deploy_application=true -auto-approve
 }
 else {
-    & $Tf apply
+    & $Tf apply -var=deploy_application=true
 }
 
-& $Deploy
 & (Join-Path $ProjectRoot "scripts\set_frontend_api.ps1")
 
-$appUrl = (& $TerraformExe -chdir=(Resolve-Path (Join-Path $ScriptDir "..")) output -raw app_url).Trim()
+$appUrl = (& python (Join-Path $ProjectRoot 'scripts/terraform_run.py') output -raw app_url).Trim()
 Write-Output "Remote app: $appUrl"
 Write-Output "Local frontend: cd web; python -m http.server 5173"

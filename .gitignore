@@ -47,11 +47,13 @@ mobile/android/app/build/
 **/.terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
 infra/terraform/terraform.tfvars
 infra/terraform/.env.ncloud
 infra/terraform/*.auto.tfvars
 infra/terraform/*.auto.tfvars.json
 infra/terraform/.terraform.lock.hcl
+infra/terraform/config/
 
 # Local documents and contest work files
 docs/

@@ -6,6 +6,7 @@ from typing import Annotated
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import Settings, get_settings
 from app.core.database import Database
@@ -43,6 +44,13 @@ def bearer_token(authorization: str | None = Header(None)) -> str:
 
 def auth_service(db: Annotated[Database, Depends(get_database)]) -> AuthService:
     return AuthService(db)
+
+
+def current_user(token: Annotated[str, Depends(bearer_token)], auth: Annotated[AuthService, Depends(auth_service)]) -> dict:
+    try:
+        return auth.me(token)
+    except AuthError as exc:
+        raise HTTPException(401, "로그인이 필요합니다.") from exc
 
 
 def resolve_sample_root(configured_path: Path) -> Path:
@@ -189,6 +197,7 @@ def get_costs(
 def analyze_text(
     payload: dict,
     service: Annotated[AnalysisService, Depends(get_analysis_service)],
+    user: Annotated[dict, Depends(current_user)],
 ) -> dict:
     text = str(payload.get("text", "")).strip()
     if not text:
@@ -198,14 +207,18 @@ def analyze_text(
         profiles = parse_profiles(profiles)
     elif not isinstance(profiles, list):
         profiles = None
-    return service.analyze_text(text=text, profiles=profiles)
+    if len(text) > 20000:
+        raise HTTPException(400, "Text exceeds 20000 characters")
+    return service.analyze_text(text=text, profiles=profiles or user["profiles"], user_id=user["user_id"], language=str(payload.get("language", "ko")))
 
 
 @router.post("/api/v1/analyze/image")
 async def analyze_image(
     service: Annotated[AnalysisService, Depends(get_analysis_service)],
+    user: Annotated[dict, Depends(current_user)],
     file: UploadFile = File(...),
-    profiles: str = Form("halal,vegan,allergy"),
+    profiles: str = Form(""),
+    language: str = Form("ko"),
     ocr_mode: str = Form("live"),
     mock_text: str | None = Form(
         None,
@@ -220,14 +233,16 @@ async def analyze_image(
     if normalized_ocr_mode == "mock" and not effective_mock_text:
         raise HTTPException(status_code=400, detail="mock_text is required when ocr_mode is mock")
 
-    image_bytes = await file.read()
+    image_bytes = await file.read(service.settings.ocr_max_upload_mb * 1024 * 1024 + 1)
     try:
-        return service.analyze_image(
+        return await run_in_threadpool(service.analyze_image,
             image_bytes=image_bytes,
             filename=file.filename,
-            profiles=parse_profiles(profiles),
+            profiles=parse_profiles(profiles) if profiles else user["profiles"],
             mock_text=effective_mock_text,
             force_ocr=force_ocr,
+            user_id=user["user_id"],
+            language=language,
         )
     except AnalysisError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -247,7 +262,10 @@ async def analyze_image(
 def get_analysis(
     request_id: str,
     db: Annotated[Database, Depends(get_database)],
+    user: Annotated[dict, Depends(current_user)],
 ) -> dict:
+    if not db.owns_analysis(request_id, user["user_id"]):
+        raise HTTPException(404, "analysis not found")
     result = db.get_analysis_response(request_id)
     if not result:
         raise HTTPException(status_code=404, detail="analysis not found")
@@ -261,8 +279,7 @@ def list_rules(engine: Annotated[RiskRuleEngine, Depends(get_rule_engine)]) -> d
 
 @router.post("/api/v1/rules/reload")
 def reload_rules(engine: Annotated[RiskRuleEngine, Depends(get_rule_engine)]) -> dict:
-    engine.reload()
-    return {"status": "reloaded", "rule_count": len(engine.list_rules())}
+    raise HTTPException(403, "Rules are updated through deployment")
 
 
 @router.get("/api/v1/samples")

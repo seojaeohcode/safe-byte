@@ -61,6 +61,7 @@ ufw default allow outgoing
 # ever-changing client IP can lock out deployment after a network change.
 ufw limit 22/tcp
 ufw allow from "$WEB_ALLOWED_CIDR" to any port 80 proto tcp
+ufw allow from "$WEB_ALLOWED_CIDR" to any port 443 proto tcp
 ufw --force enable
 
 printf '%s\n' \

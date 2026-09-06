@@ -1,0 +1,5 @@
+httpx>=0.27,<1
+opencv-python-headless>=4.10,<5
+Pillow>=10.3
+pyserial>=3.5,<4
+bluezero>=0.8,<1; sys_platform == 'linux'

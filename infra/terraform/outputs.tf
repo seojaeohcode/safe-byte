@@ -5,12 +5,12 @@ output "public_ip" {
 
 output "app_url" {
   description = "Safe-Byte backend API base URL."
-  value       = "http://${ncloud_public_ip.app.public_ip}"
+  value       = var.public_domain != "" ? "https://${var.public_domain}" : "http://${ncloud_public_ip.app.public_ip}:80"
 }
 
 output "health_url" {
   description = "Health check endpoint."
-  value       = "http://${ncloud_public_ip.app.public_ip}/health"
+  value       = var.public_domain != "" ? "https://${var.public_domain}/health" : "http://${ncloud_public_ip.app.public_ip}:80/health"
 }
 
 output "ssh_command" {

@@ -19,6 +19,46 @@ const API_BASE_URL = normalizeApiBase(
   window.SAFE_BYTE_API_BASE_URL || queryApiBase || localStorage.getItem("safeByteApiBaseUrl") || ""
 );
 
+let authToken = sessionStorage.getItem(`safeByteToken:${API_BASE_URL}`) || '';
+const authPanel = document.createElement('form');
+authPanel.className = 'panel';
+authPanel.style.padding = '16px';
+authPanel.innerHTML = `<strong>계정 / Account</strong>
+  <label>이메일 <input name="email" type="email" autocomplete="username" required></label>
+  <label>비밀번호 <input name="password" type="password" autocomplete="current-password" minlength="8" required></label>
+  <button type="submit" name="action" value="login">로그인</button>
+  <button type="submit" name="action" value="register">회원가입</button>
+  <button type="button" id="accountLogout">로그아웃</button>
+  <p role="status" id="accountStatus"></p>`;
+document.querySelector('.mast').after(authPanel);
+const authStatus = authPanel.querySelector('#accountStatus');
+authStatus.textContent = authToken ? '로그인 세션이 있습니다.' : '분석 전에 로그인하세요.';
+authPanel.addEventListener('submit', async event => {
+  event.preventDefault();
+  const action = event.submitter?.value || 'login';
+  const input = new FormData(authPanel);
+  try {
+    const response = await fetch(apiUrl(`/api/v1/auth/${action}`), {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: input.get('email'), password: input.get('password'), display_name: '웹 사용자', profiles: ['halal', 'vegan', 'allergy']}),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || '로그인 실패');
+    authToken = data.token;
+    sessionStorage.setItem(`safeByteToken:${API_BASE_URL}`, authToken);
+    authPanel.elements.password.value = '';
+    authStatus.textContent = '로그인했습니다.';
+  } catch (error) { authStatus.textContent = error.message; }
+});
+authPanel.querySelector('#accountLogout').addEventListener('click', async () => {
+  try {
+    const response = await fetch(apiUrl('/api/v1/auth/logout'), {method:'POST', headers:{Authorization:`Bearer ${authToken}`}});
+    if (!response.ok && response.status !== 401) throw new Error('로그아웃 실패');
+    authToken = ''; sessionStorage.removeItem(`safeByteToken:${API_BASE_URL}`);
+    authStatus.textContent = '로그아웃했습니다.';
+  } catch (error) { authStatus.textContent = error.message; }
+});
+
 const el = {
   systemStrip: document.querySelector("#systemStrip"),
   systemText: document.querySelector("#systemText"),
@@ -519,7 +559,8 @@ async function analyze() {
       form.append("mock_text", el.mockText.value);
     }
 
-    const response = await fetch(apiUrl("/api/v1/analyze/image"), { method: "POST", body: form });
+    if (!authToken) throw new Error('먼저 로그인하세요.');
+    const response = await fetch(apiUrl("/api/v1/analyze/image"), { method: "POST", body: form, headers: {Authorization: `Bearer ${authToken}`} });
     const payload = await response.json();
     if (!response.ok) {
       throw new Error(payload.detail?.message || payload.detail || "분석 실패");

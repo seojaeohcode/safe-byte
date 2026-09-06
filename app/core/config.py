@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -28,6 +29,20 @@ class Settings(BaseSettings):
     ocr_max_long_edge: int = 1600
     ocr_jpeg_quality: int = 85
     ocr_timeout_seconds: int = 20
+    image_preprocessing: bool = True
+    ocr_min_confidence: float = 0.75
+    llm_base_url: str = "http://127.0.0.1:11434"
+    llm_model: str = "qwen2.5:3b"
+    llm_enabled: bool = False
+    llm_provider: Literal['ollama', 'openai'] = 'ollama'
+    openai_api_key: str | None = None
+    openai_model: str = 'gpt-4o-mini'
+    llm_daily_limit: int = Field(default=100, ge=0)
+    llm_timeout_seconds: int = 15
+    deepl_auth_key: str | None = None
+    deepl_api_url: str = "https://api-free.deepl.com/v2/translate"
+    translation_enabled: bool = False
+    catalog_path: Path = Path("data/products.json")
 
     public_api_live_health: bool = False
     public_api_timeout_seconds: int = 10
@@ -46,7 +61,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=".env",
-        env_file_encoding="utf-8",
+        env_file_encoding="utf-8-sig",
         case_sensitive=False,
         extra="ignore",
     )
@@ -84,4 +99,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings(_env_file=os.environ.get("SAFEBYTE_ENV_FILE", ".env"))

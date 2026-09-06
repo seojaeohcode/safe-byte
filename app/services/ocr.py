@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -56,14 +57,7 @@ class OcrService:
             )
 
         if self.settings.ocr_provider == "mock":
-            return OcrResult(
-                provider="mock",
-                text=self._default_mock_text(),
-                raw_response={"source": "default.mock_text"},
-                cached=False,
-                called_paid_api=False,
-                cache_backend=None,
-            )
+            raise OcrProviderError('Live OCR is not configured. Use explicit mock mode and text for tests.')
 
         if self.settings.ocr_provider == "clova":
             return self._extract_with_clova(image, force_ocr=force_ocr)
@@ -75,7 +69,7 @@ class OcrService:
             raise OcrProviderError("CLOVA OCR invoke URL or secret key is not configured")
 
         if self.settings.ocr_cache_enabled and not force_ocr:
-            redis_payload = self._find_redis_ocr_result(image.original_hash, provider="clova")
+            redis_payload = self._find_redis_ocr_result(hashlib.sha256(image.bytes).hexdigest(), provider="clova")
             if redis_payload:
                 return OcrResult(
                     provider=str(redis_payload.get("provider", "clova")),
@@ -86,9 +80,9 @@ class OcrService:
                     cache_backend="redis",
                 )
 
-            cached = self.db.find_ocr_result(image.original_hash, provider="clova")
+            cached = self.db.find_ocr_result(hashlib.sha256(image.bytes).hexdigest(), provider="clova")
             if cached:
-                self._save_redis_ocr_result(image.original_hash, cached)
+                self._save_redis_ocr_result(hashlib.sha256(image.bytes).hexdigest(), cached)
                 return OcrResult(
                     provider=cached["provider"],
                     text=cached["text"],
@@ -103,12 +97,6 @@ class OcrService:
                 "Paid CLOVA OCR call blocked. Set ALLOW_PAID_OCR=true only when you intentionally run live OCR."
             )
 
-        today_count = self.db.get_usage_count("clova_ocr")
-        if today_count >= self.settings.ocr_daily_limit:
-            raise CostGuardError(
-                f"Daily CLOVA OCR limit reached: {today_count}/{self.settings.ocr_daily_limit}"
-            )
-
         payload = {
             "version": "V2",
             "requestId": str(uuid.uuid4()),
@@ -116,7 +104,7 @@ class OcrService:
             "images": [
                 {
                     "format": image.image_format,
-                    "name": image.original_hash[:16],
+                    "name": hashlib.sha256(image.bytes).hexdigest()[:16],
                     "data": base64.b64encode(image.bytes).decode("ascii"),
                 }
             ],
@@ -126,7 +114,8 @@ class OcrService:
             "X-OCR-SECRET": self.settings.clova_ocr_secret_key or "",
         }
 
-        self.db.increment_usage("clova_ocr")
+        if not self.db.reserve_usage("clova_ocr", self.settings.ocr_daily_limit):
+            raise CostGuardError("Daily CLOVA OCR limit reached")
         try:
             response = httpx.post(
                 self.settings.clova_ocr_invoke_url or "",
@@ -135,15 +124,24 @@ class OcrService:
                 timeout=self.settings.ocr_timeout_seconds,
             )
         except httpx.HTTPError as exc:
-            raise OcrProviderError(f"CLOVA OCR request failed: {exc}") from exc
+            raise OcrProviderError("CLOVA OCR connection failed") from exc
 
         if response.status_code >= 400:
             raise OcrProviderError(
-                f"CLOVA OCR returned HTTP {response.status_code}: {response.text[:300]}"
+                f"CLOVA OCR returned HTTP {response.status_code}"
             )
 
-        raw = response.json()
+        try:
+            raw = response.json()
+        except ValueError as exc:
+            raise OcrProviderError("CLOVA returned invalid JSON") from exc
+        if not isinstance(raw, dict) or not raw.get("images"):
+            raise OcrProviderError("CLOVA returned no image result")
+        if any(item.get("inferResult") != "SUCCESS" for item in raw["images"]):
+            raise OcrProviderError("CLOVA could not recognize this image; please retake it")
         text = self._parse_clova_text(raw)
+        if not text:
+            raise OcrProviderError("No readable text found; please retake the label")
         result = OcrResult(
             provider="clova",
             text=text,
@@ -157,7 +155,7 @@ class OcrService:
 
     def _save(self, image: PreparedImage, result: OcrResult) -> None:
         self.db.save_ocr_result(
-            image_hash=image.original_hash,
+            image_hash=hashlib.sha256(image.bytes).hexdigest(),
             provider=result.provider,
             text=result.text,
             raw_response=result.raw_response,
@@ -167,7 +165,7 @@ class OcrService:
             called_paid_api=result.called_paid_api,
         )
         self._save_redis_ocr_result(
-            image.original_hash,
+            hashlib.sha256(image.bytes).hexdigest(),
             {
                 "provider": result.provider,
                 "text": result.text,
@@ -203,10 +201,16 @@ class OcrService:
     def _parse_clova_text(raw: dict[str, Any]) -> str:
         lines: list[str] = []
         for image in raw.get("images", []):
+            words: list[str] = []
             for field in image.get("fields", []):
                 text = field.get("inferText")
                 if text:
-                    lines.append(str(text))
+                    words.append(str(text))
+                if field.get("lineBreak", False):
+                    lines.append(" ".join(words))
+                    words = []
+            if words:
+                lines.append(" ".join(words))
         return "\n".join(lines).strip()
 
     @staticmethod

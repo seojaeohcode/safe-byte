@@ -11,6 +11,7 @@ RUN python -m pip install --upgrade pip \
     && python -m pip install -r requirements.txt
 
 COPY app app
+COPY web web
 COPY config config
 COPY data/risk_rules.json data/risk_rules.json
 

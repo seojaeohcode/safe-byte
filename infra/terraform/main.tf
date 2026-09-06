@@ -69,6 +69,13 @@ resource "ncloud_access_control_group_rule" "app" {
     description = "Outbound HTTP package access"
   }
 
+  inbound {
+    protocol    = "TCP"
+    ip_block    = var.web_allowed_cidr
+    port_range  = "443"
+    description = "HTTPS when a DNS hostname is configured"
+  }
+
   outbound {
     protocol    = "TCP"
     ip_block    = "0.0.0.0/0"

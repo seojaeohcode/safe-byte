@@ -7,7 +7,7 @@
     <link rel="icon" href="data:,">
     <script>
       window.SAFE_BYTE_ASSET_BASE =
-        location.pathname === "/app" || location.pathname === "/app/"
+        ["/app", "/app/", "/lab"].includes(location.pathname)
           ? "/static/"
           : "./";
       document.write(

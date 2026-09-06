@@ -9,7 +9,7 @@ if (-not $ApiBaseUrl) {
     if (-not (Test-Path $Terraform)) {
         throw "Pass -ApiBaseUrl or install Terraform in .tools first."
     }
-    $ApiBaseUrl = & $Terraform -chdir=infra\terraform output -raw app_url
+    $ApiBaseUrl = & python (Join-Path $PSScriptRoot 'terraform_run.py') output -raw app_url
     $ApiBaseUrl = $ApiBaseUrl -replace "/app$", ""
 }
 

@@ -138,6 +138,13 @@ class RiskRuleEngine:
         context = self._context_window(normalized_text, position, keyword, radius=260)
         local_context = self._context_window(normalized_text, position, keyword, radius=90)
         statement_context = self._statement_window(normalized_text, position, keyword)
+        if position >= 0:
+            suffix = compact_for_match(normalized_text[position:position + len(keyword) + 18])
+            compact_keyword = compact_for_match(keyword)
+            if any(suffix.startswith(t.format(keyword=compact_keyword)) for t in NEGATED_CONTEXT_PATTERNS if not t.startswith("무")):
+                return None
+            if normalized_text[max(0, position - 1):position] == "무":
+                return None
         if self._skip_detection(rule, keyword, statement_context, local_context):
             return None
         occurrence_type = self._classify_occurrence(statement_context, local_context, context)
@@ -155,6 +162,11 @@ class RiskRuleEngine:
                 "\uc9c1\uc811 \uc6d0\uc7ac\ub8cc \ud568\uc720\ub85c "
                 "\ud310\ub2e8\ud558\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4."
             )
+
+        if occurrence_type == "unknown":
+            severity = "caution"
+            confidence = min(confidence, 0.6)
+            reason = f"{rule['canonical_name']}: 함유 문맥을 확인할 수 없어 추가 확인이 필요합니다."
 
         return {
             "rule_id": rule["id"],
@@ -208,10 +220,6 @@ class RiskRuleEngine:
         compact_statement = compact_for_match(statement_context)
         compact_local = compact_for_match(local_context)
         compact_context = f"{compact_statement} {compact_local}"
-
-        for template in NEGATED_CONTEXT_PATTERNS:
-            if template.format(keyword=compact_keyword) in compact_context:
-                return True
 
         for pattern in rule.get("skip_context_patterns", []):
             if compact_for_match(str(pattern)) in compact_context:

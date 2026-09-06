@@ -33,6 +33,7 @@ def prepare_image(
     max_image_mb: int,
     max_long_edge: int,
     jpeg_quality: int,
+    preprocessing: bool = False,
 ) -> PreparedImage:
     if not image_bytes:
         raise ImageValidationError("empty image")
@@ -60,6 +61,10 @@ def prepare_image(
             (max(1, int(image.width * scale)), max(1, int(image.height * scale))),
             Image.Resampling.LANCZOS,
         )
+
+    if preprocessing:
+        from app.services.vision import enhance_label
+        image = enhance_label(image)
 
     quality = jpeg_quality
     max_image_bytes = max_image_mb * 1024 * 1024

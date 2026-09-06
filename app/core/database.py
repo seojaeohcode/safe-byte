@@ -127,6 +127,10 @@ class Database:
                 );
                 """
             )
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(analysis_requests)")}
+            if "user_id" not in columns:
+                conn.execute("ALTER TABLE analysis_requests ADD COLUMN user_id TEXT")
+            conn.execute("CREATE INDEX IF NOT EXISTS analysis_owner ON analysis_requests(user_id, created_at)")
 
     @staticmethod
     def _user_payload(row: sqlite3.Row) -> dict[str, Any]:
@@ -239,15 +243,16 @@ class Database:
         image_hash: str | None,
         source_name: str | None,
         profiles: list[str],
+        user_id: str | None = None,
     ) -> None:
         with self.connect() as conn:
             conn.execute(
                 """
                 INSERT INTO analysis_requests
-                    (request_id, image_hash, source_name, status, profiles_json, created_at)
-                VALUES (?, ?, ?, 'started', ?, ?)
+                    (request_id, image_hash, source_name, status, profiles_json, created_at, user_id)
+                VALUES (?, ?, ?, 'started', ?, ?, ?)
                 """,
-                (request_id, image_hash, source_name, json_dumps(profiles), utc_now().isoformat()),
+                (request_id, image_hash, source_name, json_dumps(profiles), utc_now().isoformat(), user_id),
             )
 
     def complete_analysis(
@@ -421,6 +426,25 @@ class Database:
         with self.connect() as conn:
             row = conn.execute("SELECT COUNT(*) AS count FROM analysis_requests").fetchone()
             return int(row["count"]) if row else 0
+
+    def reserve_usage(self, provider: str, limit: int) -> bool:
+        """Reserve before calling an external API; the limit is atomic across workers."""
+        day, now = utc_now().date().isoformat(), utc_now().isoformat()
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT count FROM api_usage WHERE provider=? AND usage_date=?", (provider, day)).fetchone()
+            if (row[0] if row else 0) >= limit:
+                return False
+            conn.execute("INSERT INTO api_usage VALUES (?, ?, 1, ?) ON CONFLICT(provider, usage_date) DO UPDATE SET count=count+1, updated_at=excluded.updated_at", (provider, day, now))
+            return True
+
+    def owns_analysis(self, request_id: str, user_id: str) -> bool:
+        with self.connect() as conn:
+            return conn.execute("SELECT 1 FROM analysis_requests WHERE request_id=? AND user_id=?", (request_id, user_id)).fetchone() is not None
+
+    def revoke_session(self, token: str) -> None:
+        with self.connect() as conn:
+            conn.execute("DELETE FROM user_sessions WHERE token=?", (token,))
 
     def increment_usage(self, provider: str, usage_date: str | None = None) -> int:
         usage_date = usage_date or utc_now().date().isoformat()

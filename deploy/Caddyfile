@@ -1,0 +1,3 @@
+{$SAFEBYTE_DOMAIN} {
+    reverse_proxy nginx:8080
+}

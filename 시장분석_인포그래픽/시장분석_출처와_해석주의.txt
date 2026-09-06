@@ -1,0 +1,28 @@
+Safe-Byte 시장분석 인포그래픽 출처
+
+1. 법무부 출입국·외국인정책본부, 체류외국인(2025)
+   https://www.cppb.go.kr/moj/2412/subview.do
+   - 2025년 체류외국인 2,783,247명, 전년 대비 5.0% 증가, 전체 인구의 5.44%
+   - 2021~2025: 1,956,781 / 2,245,912 / 2,507,584 / 2,650,783 / 2,783,247
+
+2. 문화체육관광부·한국관광통계, 2025년 방한 외래관광객
+   https://www.korea.kr/news/policyNewsView.do?newsId=148965727
+   - 2025년 18,940,000명, 역대 최고
+   - 인포그래픽 추이: 2021 97만 / 2022 320만 / 2023 1,103만 / 2024 1,637만 / 2025 1,894만
+
+3. 식품의약품안전처·식품안전나라, 식품 알레르기 표시 안내
+   https://www.foodsafetykorea.go.kr/portal/board/boardDetail.do?bbs_no=hpikbbs001&menu_grp=MENU_NEW05&menu_no=8083&ntctxt_no=1083285
+   - 식약처 지정 알레르기 유발물질 22종
+   - 같은 제조과정에서 혼입 우려가 있으면 ‘혼입 가능성 있음/혼입 가능’ 표시
+
+4. WHO/FAO, What are food allergies? (2025)
+   https://iris.who.int/bitstream/handle/10665/380056/B09010-eng.pdf?sequence=1
+   - 전 세계 2.2억 명 이상이 알레르기로 특정 식품을 피해야 함
+
+5. Mastercard–CrescentRating, Global Muslim Travel Index 2025
+   https://www.mastercard.com/news/eemea/en/newsroom/press-releases/en/2025-1/june/mastercard-crescentrating-global-muslim-travel-index-reveals-trends-shaping-the-future-of-halal-travel/
+   - 국제 무슬림 관광객 2024년 1.76억 명, 2030년 2.45억 명 전망
+
+해석 주의
+- 체류 외국인과 방한 외래관광객은 집계 기준과 기간이 달라 단순 합산하지 않음.
+- 2030 수치는 전망치(E)임.

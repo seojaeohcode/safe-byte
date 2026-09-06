@@ -4,12 +4,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safebyte_mobile/main.dart';
+import 'package:safebyte_mobile/workspace.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(_loadKoreanFonts);
+
+  testWidgets('bottom navigation connects cart history and saved products', (tester) async {
+    await _setPhoneViewport(tester);
+    final api = _PreviewApi();
+    await tester.pumpWidget(_PreviewShell(child: HomeScreen(api: api, token: 'preview', user: _previewUser, onLogout: () {}, onUserChanged: (_) {})));
+    await _settlePreview(tester);
+    await tester.tap(find.text('장바구니').last);
+    await tester.pumpAndSettle();
+    expect(find.text('주말 장보기'), findsOneWidget);
+    await tester.tap(find.text('기록').last);
+    await tester.pumpAndSettle();
+    expect(find.text('분석한 라벨이 여기에 모입니다.'), findsOneWidget);
+    await tester.tap(find.text('내 정보').last);
+    await tester.pumpAndSettle();
+    await _capture('my_account.png');
+    await tester.tap(find.text('저장한 상품'));
+    await tester.pumpAndSettle();
+    expect(find.text('쌀과자'), findsOneWidget);
+    expect(api.paths, containsAll(['/api/v1/carts', '/api/v1/history', '/api/v1/family', '/api/v1/products']));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('capture family editor in existing design', (tester) async {
+    await _setPhoneViewport(tester);
+    await tester.pumpWidget(const _PreviewShell(child: ProfileEditor(
+      initialProfiles: ['vegan'], cart: false, initialName: '우리 가족')));
+    await _settlePreview(tester);
+    expect(tester.takeException(), isNull);
+    await _capture('family_profile.png');
+  });
+
+  testWidgets('capture cart in existing design', (tester) async {
+    await _setPhoneViewport(tester);
+    await tester.pumpWidget(_PreviewShell(child: CartScreen(api: _PreviewApi(), token: 'preview',
+      cart: const {'id': 'preview', 'name': '오늘 장보기'})));
+    await _settlePreview(tester);
+    expect(tester.takeException(), isNull);
+    await _capture('shopping_cart.png');
+  });
 
   testWidgets('capture auth screen', (tester) async {
     await _setPhoneViewport(tester);
@@ -70,17 +110,10 @@ void main() {
 }
 
 Future<void> _loadKoreanFonts() async {
-  final loader = FontLoader('Malgun Gothic');
-  for (final path in [
-    r'C:\Windows\Fonts\malgun.ttf',
-    r'C:\Windows\Fonts\malgunbd.ttf',
-  ]) {
-    final file = File(path);
-    if (file.existsSync()) {
-      final bytes = await file.readAsBytes();
-      loader.addFont(
-          Future.value(ByteData.sublistView(Uint8List.fromList(bytes))));
-    }
+  final loader = FontLoader('NotoSansKR');
+  for (final suffix in ['Regular', 'Bold']) {
+    final bytes = await File('assets/fonts/NotoSansKR-$suffix.ttf').readAsBytes();
+    loader.addFont(Future.value(ByteData.sublistView(bytes)));
   }
   await loader.load();
 
@@ -154,6 +187,21 @@ const _previewResult = AnalysisResult(
 
 class _PreviewApi extends SafeByteApi {
   _PreviewApi() : super('http://preview.local');
+  final paths = <String>[];
+
+  @override
+  Future<Map<String, dynamic>> request(String method, String path, String token, {Map<String, dynamic>? body}) async {
+    paths.add(path);
+    if (path == '/api/v1/family') return {'profiles': []};
+    if (path == '/api/v1/history') return {'analyses': []};
+    if (path == '/api/v1/products') return {'products': [{'id': 'product', 'name': '쌀과자', 'category': '과자', 'source_request_id': 'preview'}]};
+    if (path == '/api/v1/carts') return {'carts': [{'id': 'preview', 'name': '주말 장보기', 'status': 'active', 'profiles': ['vegan'], 'language': 'ko'}]};
+    return {
+    'cart': {'status': 'active'}, 'items': [], 'counts': {'SAFE': 0, 'CAUTION': 0, 'DANGER': 0},
+    'final_level': 'EMPTY', 'total_quantity': 0,
+    'nutrition': {'totals': {}, 'covered_quantity': {}, 'note': '확인하지 않은 값은 합계에 포함하지 않습니다.'},
+    };
+  }
 
   @override
   Future<OcrHealth> ocrHealth() async {
@@ -177,112 +225,9 @@ class _PreviewShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xff2de2c6),
-      brightness: Brightness.dark,
-    ).copyWith(
-      primary: const Color(0xff2de2c6),
-      secondary: const Color(0xff87a9ff),
-      tertiary: const Color(0xff30d989),
-      error: const Color(0xffff6f61),
-      surface: const Color(0xff252a32),
-      surfaceContainerHighest: const Color(0xff191b20),
-      onSurface: const Color(0xfff7fbfa),
-      outline: const Color(0xff3a404b),
-    );
-
-    return RepaintBoundary(
-      key: _captureKey,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: scheme,
-          scaffoldBackgroundColor: const Color(0xff191b20),
-          fontFamily: 'Malgun Gothic',
-          fontFamilyFallback: const [
-            'Noto Sans CJK KR',
-            'Apple SD Gothic Neo',
-            'Malgun Gothic',
-          ],
-          textTheme: const TextTheme(
-            displaySmall: TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.w900,
-              height: 1.08,
-              letterSpacing: 0,
-            ),
-            headlineMedium: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              height: 1.12,
-              letterSpacing: 0,
-            ),
-            headlineSmall: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              height: 1.18,
-              letterSpacing: 0,
-            ),
-            titleLarge: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-            titleMedium: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-            bodyLarge: TextStyle(fontSize: 16, height: 1.45, letterSpacing: 0),
-            bodyMedium: TextStyle(fontSize: 14, height: 1.45, letterSpacing: 0),
-            bodySmall: TextStyle(fontSize: 12, height: 1.35, letterSpacing: 0),
-            labelLarge: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-          ).apply(
-            bodyColor: const Color(0xfff7fbfa),
-            displayColor: const Color(0xfff7fbfa),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: const Color(0xff252a32),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xff3a404b)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xff3a404b)),
-            ),
-          ),
-          filledButtonTheme: FilledButtonThemeData(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xff2de2c6),
-              foregroundColor: const Color(0xff191b20),
-              minimumSize: const Size.fromHeight(54),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          outlinedButtonTheme: OutlinedButtonThemeData(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xfff7fbfa),
-              side: const BorderSide(color: Color(0xff3a404b)),
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
+    return RepaintBoundary(key: _captureKey, child: MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: safeByteTheme(),
         home: child,
       ),
     );
@@ -300,6 +245,7 @@ Future<void> _setPhoneViewport(WidgetTester tester) async {
 }
 
 Future<void> _settlePreview(WidgetTester tester) async {
+  await tester.runAsync(() => precacheImage(const AssetImage('assets/app_logo.png'), tester.element(find.byKey(_captureKey))));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 250));
   await tester.pump(const Duration(milliseconds: 250));

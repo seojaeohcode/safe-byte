@@ -1,66 +1,368 @@
 # SafeByte
 
-SafeByte is a Flutter + FastAPI MVP that helps users check Korean food labels against
-personal dietary criteria such as allergy, halal, and vegan restrictions.
+한국어 식품 라벨을 촬영하면 OCR로 원재료를 읽고, 사용자가 고른 기준(알레르기·할랄·비건·베지테리언)에
+맞춰 `SAFE` / `CAUTION` / `DANGER`를 근거와 함께 돌려주는 Flutter + FastAPI MVP입니다.
 
-The core goal is simple: take a food-label image, extract Korean text with OCR, correct
-common OCR noise, classify ingredient context, and return `SAFE`, `CAUTION`, or `DANGER`
-with evidence.
+- 백엔드: FastAPI + SQLite + Redis, Nginx 리버스 프록시, Docker Compose
+- OCR: NAVER CLOVA General OCR V2 (일일 호출 한도·캐시로 비용 통제)
+- 판정: `data/risk_rules.json` 기반 규칙 엔진 (직접 원재료 / 교차 접촉 / 문맥 불명 구분)
+- 앱: Flutter (Android + Web 동일 코드), 카트 기기 연동(BLE, Raspberry Pi + Arduino Nano)
+- 인프라: Terraform으로 NAVER Cloud Platform(VPC) 프로비저닝 + 애플리케이션 배포
 
-## Highlights
+---
 
-- Korean food-label OCR using Naver CLOVA OCR
-- Rule-based risk detection for allergy, halal, vegan, and cross-contact phrases
-- OCR correction rules for spacing, broken Korean terms, and common label words
-- Direct ingredient vs. shared-facility warning separation
-- Redis + SQLite OCR cache to reduce paid OCR calls
-- Daily OCR call guard for cost control
-- Flutter mobile app for login, preference setup, image input, and result review
-- Docker Compose deployment with Nginx, FastAPI, Redis, and SQLite
-- Terraform scaffold for Ncloud Compute deployment
+## 1. 배포된 서버 정보
 
-## Architecture
+| 항목 | 값 |
+|---|---|
+| API Base URL | `http://101.79.20.37` |
+| 클라우드 | NAVER Cloud Platform (VPC), 리전 `KR`, 존 `KR-2` |
+| 서버 | `safebyte-app` · Ubuntu 22.04 · `mi1-g3` (1 vCPU / 1GB) · 정액제(FXSUM) |
+| 서버 인스턴스 번호 | `145044708` (공인 IP 인스턴스 `145044822`) |
+| 구성 | Nginx :80 → FastAPI :8000 → Redis / SQLite (모두 Docker Compose) |
+| SSH | `ssh -i ~/.ssh/safebyte_ed25519 deploy@101.79.20.37` (키 인증만 허용) |
+| 앱 디렉터리 | `/opt/safebyte` |
 
-```text
-Flutter App
-  -> Nginx
-  -> FastAPI
-  -> CLOVA OCR
-  -> OCR correction
-  -> Risk rule engine
-  -> SQLite / Redis
-  -> SAFE / CAUTION / DANGER
+### 화면·엔드포인트
+
+| URL | 설명 |
+|---|---|
+| `http://101.79.20.37/mobile/` | Flutter 웹 앱 (실제 서비스 화면) |
+| `http://101.79.20.37/app` | 위 주소로 리다이렉트 |
+| `http://101.79.20.37/lab` | OCR 개발 도구 (라벨 업로드/규칙 확인용) |
+| `http://101.79.20.37/health` | 서버 상태 |
+| `http://101.79.20.37/health/ocr` | OCR 제공자·한도·오늘 사용량 |
+| `http://101.79.20.37/api/v1/costs` | OCR 비용/캐시/서버 요약 |
+
+> 운영 서버는 `ENABLE_DOCS=false`이므로 `/docs`, `/openapi.json`은 열리지 않습니다.
+> Swagger UI가 필요하면 아래 "로컬 개발"로 띄우세요.
+
+### 현재 제약
+
+- HTTPS가 아닌 **평문 HTTP**이며 접근 CIDR이 `0.0.0.0/0`입니다. 데모/내부 테스트 용도로만 쓰고
+  실제 사용자 데이터를 넣지 마세요. 도메인을 연결하면 Caddy가 자동으로 인증서를 발급합니다
+  (`public_domain` Terraform 변수 → 재배포 → 서버에서 `sudo ufw allow 443/tcp`).
+- 회원가입이 열려 있으므로 아무나 계정을 만들 수 있습니다.
+
+---
+
+## 2. 팀원용 테스트 가이드
+
+### OCR 한도
+
+- **하루 50회**(서버 전체 합계, UTC 기준 자정 리셋). 사용자별이 아니라 서버 공용입니다.
+- **캐시 적중은 한도를 소모하지 않습니다.** 같은 이미지를 다시 올리면 무료입니다.
+- 실패한 유료 요청도 예약한 1회를 사용합니다. 한도 초과 시 `402`가 돌아옵니다.
+- 남은 횟수는 `GET /health/ocr`의 `daily_limit`, `usage_today`로 확인합니다.
+
+```powershell
+curl http://101.79.20.37/health/ocr
 ```
 
-## Repository Layout
+### 가장 쉬운 방법: 웹 앱
 
-```text
-app/                 FastAPI backend
-app/services/        OCR, correction, risk rules, auth, cache, cost services
-app/api/             REST API routes
-data/risk_rules.json Risk dictionary and rule definitions
-mobile/              Flutter Android app
-web/                 Lightweight local web tester
-deploy/              Nginx configuration
-infra/terraform/     Ncloud infrastructure scaffold
-scripts/             Deployment and local helper scripts
-tests/               Backend tests
+브라우저에서 `http://101.79.20.37/mobile/` → 가입 → 기준 선택 → 라벨 촬영/업로드.
+
+### API로 직접 테스트
+
+```powershell
+# 1) 가입하고 토큰 받기
+$body = @{ email="tester1@example.com"; password="test-password"; display_name="테스터";
+           profiles=@("allergy:milk","halal") } | ConvertTo-Json
+$auth = Invoke-RestMethod -Method Post -Uri http://101.79.20.37/api/v1/auth/register `
+        -ContentType 'application/json' -Body $body
+$headers = @{ Authorization = "Bearer $($auth.token)" }
+
+# 2) 텍스트 분석 - OCR 한도를 쓰지 않습니다
+$text = @{ text="원재료명: 밀가루, 우유, 돼지고기"; profiles=@("allergy:milk","halal") } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://101.79.20.37/api/v1/analyze/text `
+        -Headers $headers -ContentType 'application/json' -Body $text
+
+# 3) 라벨 이미지 분석 - 여기서만 OCR 한도를 씁니다
+curl.exe -H "Authorization: Bearer $($auth.token)" `
+     -F "file=@label.jpg" -F "profiles=allergy:milk,halal" -F "ocr_mode=live" `
+     http://101.79.20.37/api/v1/analyze/image
 ```
 
-## Secret Policy
+### 한도를 쓰지 않고 이미지 흐름만 확인하기
 
-This repository intentionally excludes runtime secrets and local state.
+`ocr_mode=mock` + `mock_text`를 보내면 CLOVA를 호출하지 않고 나머지 파이프라인(규칙·번역·영양)을 그대로 탑니다.
 
-Not committed:
+```powershell
+curl.exe -H "Authorization: Bearer $($auth.token)" `
+     -F "file=@label.jpg" -F "ocr_mode=mock" `
+     -F "mock_text=원재료명: 밀, 대두, 우유 함유" `
+     http://101.79.20.37/api/v1/analyze/image
+```
 
-- `.env`
-- CLOVA OCR invoke URL and secret key
-- Ncloud access key and secret key
-- Terraform state and `terraform.tfvars`
-- SQLite runtime database
-- OCR logs, local cost snapshots, build outputs, APK files, and sample image datasets
+### 전체 기능 자동 점검 (OCR 0회 소모)
 
-Use the example files instead:
+```powershell
+python scripts/smoke_workspace.py --api http://101.79.20.37
+```
+
+가족 기준 CRUD, 분석·이력, 카트 항목/영양 합산, 저장 상품·대체 후보, 기기 페어링·폐기,
+로그아웃 세션 무효화를 합성 텍스트만으로 검증합니다.
+
+실제 CLOVA 호출까지 확인하려면(**OCR 1회 소모**):
+
+```powershell
+python scripts/smoke_live.py --api http://101.79.20.37 --live
+```
+
+---
+
+## 3. 아키텍처
+
+```text
+Flutter App (Android / Web)  ─┐
+Raspberry Pi 카트 클라이언트  ─┤
+                              ├─→ Nginx :80 ─→ FastAPI :8000
+웹 OCR 랩 (/lab)             ─┘                  │
+                                                 ├─→ CLOVA OCR V2 (일일 한도 + 캐시)
+                                                 ├─→ OCR 보정 → 규칙 엔진 → SAFE/CAUTION/DANGER
+                                                 └─→ SQLite(영구) + Redis(핫 캐시)
+```
+
+### 저장소 구조
+
+```text
+app/                     FastAPI 백엔드
+  api/routes.py          헬스체크, 인증, 분석, 룰, 샘플, 비용
+  api/workspace_routes.py 가족/카트/기기/상품/대체품/공공DB 검색
+  core/                  설정(config), SQLite 접근(database), DI(dependencies)
+  services/              ocr, ocr_correction, risk_rules, analysis, workspace,
+                         auth, cache, enrichment, localization, nutrition, vision
+data/risk_rules.json     위험 판정 규칙 사전
+mobile/                  Flutter 앱 (Android + Web)
+hardware/                Raspberry Pi 키오스크 / Arduino Nano 펌웨어 / 케이스
+web/                     경량 OCR 개발 도구(/lab) + Flutter 웹 산출물 배포 위치
+deploy/                  nginx.conf, Caddyfile(HTTPS)
+infra/terraform/         Ncloud VPC/서버/방화벽/공인 IP + 애플리케이션 배포
+scripts/                 배포·빌드·스모크 테스트 헬퍼
+tests/                   백엔드 테스트
+```
+
+---
+
+## 4. 로컬 개발
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+Copy-Item config/mfds_public_apis.example.json config/mfds_public_apis.json
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+| URL | 설명 |
+|---|---|
+| `http://127.0.0.1:8000/health` | 상태 확인 |
+| `http://127.0.0.1:8000/docs` | Swagger UI (로컬만) |
+| `http://127.0.0.1:8000/app` | 웹 화면 |
+
+기본 `.env`는 `OCR_PROVIDER=clova`, `ALLOW_PAID_OCR=false`입니다. 키가 없으면 유료 OCR은 차단되고
+`analyze/text` 또는 `ocr_mode=mock`으로 개발할 수 있습니다.
+
+### Docker로 실행
+
+```powershell
+Copy-Item .env.example .env
+docker compose up -d --build
+curl http://127.0.0.1:8080/health
+```
+
+`Nginx :8080 → FastAPI :8000 → Redis + SQLite` 구성이며 Nginx만 외부에 노출됩니다.
+
+### 테스트
+
+```powershell
+python -m pytest -q                          # 백엔드 28개
+python scripts/mobile_check.py test --no-pub # Flutter 위젯/골든 테스트
+python scripts/mobile_check.py analyze --no-pub
+```
+
+`mobile_check.py`는 OneDrive 밖(`%LOCALAPPDATA%\SafeByte\mobile-work`)으로 소스를 복사해 빌드합니다.
+
+---
+
+## 5. API 레퍼런스
+
+공통 규칙
+
+- 대부분의 `/api/v1/*`는 `Authorization: Bearer <token>` 헤더가 필요합니다.
+- 응답은 JSON, 토큰이 없거나 만료되면 `401`, 유료 OCR 한도 초과는 `402`, OCR 제공자 오류는 `502`입니다.
+
+### 헬스 체크 (인증 불필요)
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/health` | 앱 상태, 버전, CLOVA 설정 여부, 오늘 OCR 사용량 |
+| `GET` | `/health/ocr` | OCR 제공자·캐시·일일 한도·금액 가드 상태 |
+| `GET` | `/health/public-apis` | 공공 API 연동 상태 (필요 시 `?live=true`) |
+
+### 인증
+
+| Method | Path | Auth | Request Body | Purpose |
+|---|---|---|---|---|
+| `POST` | `/api/v1/auth/register` | 없음 | `email`, `password`, `display_name`, `profiles`, `allergy_notes` | 회원가입 + 세션 토큰 |
+| `POST` | `/api/v1/auth/login` | 없음 | `email`, `password` | 로그인 + 세션 토큰 |
+| `GET` | `/api/v1/me` | 필요 | - | 내 정보 조회 |
+| `PUT` | `/api/v1/me/preferences` | 필요 | `display_name`, `profiles`, `allergy_notes` | 기준 설정 저장 |
+| `POST` | `/api/v1/auth/logout` | 필요 | - | 현재 세션 무효화 |
+
+`profiles` 값은 `halal`, `vegan`, `vegetarian`, `allergy`, `all` 또는
+`allergy:milk`처럼 세부 알레르겐(`egg, milk, buckwheat, peanut, soy, wheat, mackerel, crab, shrimp,
+pork, peach, tomato, sulfite, walnut, chicken, beef, squid, shellfish, pine_nut, fish, tree_nut, sesame`)을 씁니다.
+`우유`, `할랄` 같은 한국어 표기도 받습니다.
+
+### 분석 / 리포트
+
+| Method | Path | Auth | Request Body / Form | Purpose |
+|---|---|---|---|---|
+| `POST` | `/api/v1/analyze/text` | 필요 | `text`, `profiles`, `language`(`ko\|en\|ar\|zh\|ja`) | 텍스트 분석 (OCR 0회) |
+| `POST` | `/api/v1/analyze/image` | 필요 | `file`, `profiles`, `language`, `ocr_mode`(`live\|mock`), `mock_text`, `force_ocr` | 라벨 이미지 OCR + 분석 |
+| `GET` | `/api/v1/analysis/{request_id}` | 필요 | - | 분석 결과 상세 |
+| `GET` | `/api/v1/history` | 필요 | - | 내 분석 이력 (최근 100건) |
+| `GET` | `/api/v1/rules` | 없음 | - | 현재 룰셋 조회 |
+| `POST` | `/api/v1/rules/reload` | 없음 | - | 항상 `403` (룰은 배포로만 갱신) |
+| `GET` | `/api/v1/samples` | 없음 | - | 샘플 라벨 목록 (미설치 시 빈 배열) |
+| `GET` | `/api/v1/costs` | 없음 | - | OCR 비용·캐시·서버 요약 |
+
+### 가족 · 카트 · 기기 · 상품
+
+| Method | Path | Auth | Request Body | Purpose |
+|---|---|---|---|---|
+| `GET` | `/api/v1/family` | 필요 | - | 가족 기준 목록 |
+| `POST` | `/api/v1/family` | 필요 | `name`, `profiles`, `language` | 가족 기준 생성 (최대 20개) |
+| `PUT` | `/api/v1/family/{profile_id}` | 필요 | `name`, `profiles`, `language` | 수정 |
+| `DELETE` | `/api/v1/family/{profile_id}` | 필요 | - | 삭제 |
+| `GET` | `/api/v1/carts` | 필요 | - | 장바구니 목록 |
+| `POST` | `/api/v1/carts` | 필요 | `name`, `profiles`, `language` | 장바구니 생성 (기준 고정) |
+| `GET` | `/api/v1/carts/{cart_id}` | 필요 | - | 장바구니 상세 · 위험 집계 |
+| `POST` | `/api/v1/carts/{cart_id}/items` | 필요 | `request_id`, `name`, `quantity` | 항목 추가 / 이름·수량 변경 |
+| `DELETE` | `/api/v1/carts/{cart_id}/items/{item_id}` | 필요 | - | 항목 삭제 |
+| `PUT` | `/api/v1/carts/{cart_id}/items/{item_id}/nutrition` | 필요 | `energy_kcal`, `sodium_mg` 등 | 확인한 영양값 입력 |
+| `POST` | `/api/v1/carts/{cart_id}/close` | 필요 | - | 장보기 종료 (기기 토큰 폐기) |
+| `POST` | `/api/v1/carts/{cart_id}/pair` | 필요 | - | 5분·1회용 기기 연동 코드 |
+| `POST` | `/api/v1/devices/redeem` | 없음 | `code` | 기기 토큰 발급 (4시간) |
+| `GET` | `/api/v1/devices/session` | 기기 토큰 | - | 기기가 연결된 장바구니 조회 |
+| `POST` | `/api/v1/devices/analyze` | 기기 토큰 | `file`, `name` | 카트에서 촬영·분석·자동 담기 |
+| `POST` | `/api/v1/products` | 필요 | `request_id`, `name`, `category` | 라벨 기반 상품 저장 |
+| `GET` | `/api/v1/products` | 필요 | - | 저장 상품 목록 |
+| `DELETE` | `/api/v1/products/{product_id}` | 필요 | - | 저장 상품 삭제 |
+| `POST` | `/api/v1/alternatives` | 필요 | `name`(카테고리), `profiles`, `language` | 같은 분류의 안전 후보 |
+| `POST` | `/api/v1/references/search` | 필요 | `name`, `kind`(`nutrition\|ingredient`) | 식약처 공공 DB 검색 |
+
+### 주요 응답 키
+
+- 분석 응답(`/analyze/*`, `/analysis/{id}`)
+  - `request_id`, `status`, `profiles`, `image`
+  - `ocr`: `provider`, `cached`, `cache_backend`, `called_paid_api`, `text`, `corrected_text`, `corrections`, `regions`
+  - `risk`: `final_level`(SAFE/CAUTION/DANGER), `summary`, `detections[]`
+    (`rule_id`, `category`, `severity`, `canonical_name`, `matched_keyword`, `evidence`, `occurrence_type`)
+  - `quality`: `issues`, `needs_review` — 읽기 품질이 나쁘면 SAFE 대신 CAUTION으로 낮춥니다
+  - `ingredients`, `nutrition`, `translation`, `cost_guard`, `preview_data_url`
+- 장바구니 리포트(`/carts/{id}`): `cart`, `items`, `counts`, `total_quantity`, `final_level`, `nutrition`
+- 비용(`/costs`): `currency`, `ncloud`, `server`, `ocr`, `cache`
+- 인증(`/auth/*`): `token`, `expires_at`, `user`
+
+---
+
+## 6. Terraform 배포
+
+> OneDrive 동기화가 상태 파일을 깨뜨리기 때문에 상태와 플러그인 폴더를
+> `%LOCALAPPDATA%\SafeByte\<작업경로 해시>\`로 분리했습니다.
+> **항상 저장소 루트에서 `scripts/terraform_run.py`를 통해 실행하세요.** `terraform`을 직접 부르면 안 됩니다.
+
+```powershell
+python scripts/terraform_run.py init -input=false
+python scripts/terraform_run.py plan -input=false -out=deployment.tfplan
+python scripts/terraform_run.py apply -input=false deployment.tfplan
+python scripts/terraform_run.py output
+```
+
+### 자주 바꾸는 값 (`infra/terraform/terraform.tfvars`, git 미포함)
+
+| 변수 | 현재 값 | 설명 |
+|---|---|---|
+| `deploy_application` | `true` | 인프라 준비 후 애플리케이션까지 배포 |
+| `allow_paid_ocr` | `true` | 한도 안에서 실제 CLOVA 호출 허용 |
+| `ocr_daily_limit` | `50` | 서버 전체 일일 OCR 호출 한도 (0~1000) |
+| `public_domain` | `""` | 도메인을 넣으면 Caddy HTTPS로 전환 |
+| `ssh_allowed_cidr` / `web_allowed_cidr` | 배포자 IP / `0.0.0.0/0` | 방화벽(ACG + ufw) 허용 대역 |
+
+Terraform은 `app/`, `mobile/`, `web/`, 배포 스크립트의 해시를 추적해서 변경이 있을 때만 다시 배포합니다.
+Flutter 웹 산출물이 오래됐으면 `scripts/mobile_check.py`가 자동으로 다시 빌드합니다.
+비밀값만 바꿨을 때처럼 소스 해시가 그대로면 강제로 갱신합니다.
+
+```powershell
+python scripts/terraform_run.py plan -replace=terraform_data.application[0] -out=deployment.tfplan
+python scripts/terraform_run.py apply -input=false deployment.tfplan
+```
+
+### CLOVA OCR
+
+Ncloud Terraform 공급자에는 CLOVA OCR 도메인을 만드는 리소스가 없습니다.
+콘솔에서 만든 **기존 도메인 / API Gateway를 연결**하는 방식이며, 키는 Terraform 상태에 들어가지 않고
+로컬 `.env`의 `CLOVA_OCR_INVOKE_URL`, `CLOVA_OCR_SECRET_KEY`를 배포 시 SSH로 서버에 직접 전달합니다.
+
+### 상태 파일 주의
+
+`ncloud_login_key`의 개인키가 상태에 포함되므로 상태 파일을 반드시 보호하세요.
+상태를 잃어버리면 `terraform apply`가 서버를 새로 만들려고 합니다. 그럴 때는
+기존 리소스를 `terraform import`로 되살린 뒤 진행하세요(서버·공인 IP 인스턴스 번호는 1절 참고).
+Ncloud가 import 시 돌려주지 않는 `fee_system_type_code`는 상태에 직접 채워야 서버 재생성 계획이 사라집니다.
+
+---
+
+## 7. Flutter 앱
+
+```powershell
+python scripts/mobile_check.py build apk --debug --dart-define=SAFE_BYTE_API_BASE=http://101.79.20.37
+python scripts/mobile_check.py build web --release --base-href=/mobile/ --no-pub
+```
+
+로컬 백엔드를 볼 때는 `--dart-define=SAFE_BYTE_API_BASE=http://127.0.0.1:8000`,
+USB 연결 실기기에서는 `adb reverse tcp:8080 tcp:8080`을 함께 씁니다.
+
+화면 흐름: 가입/로그인 → 기준 선택 → 촬영 → 큰 판정 먼저 → 필요할 때만 근거 상세.
+웹에서는 BLE 대신 카트 화면에 페어링 코드를 직접 입력합니다.
+
+---
+
+## 8. 하드웨어 (카트 연동)
+
+Raspberry Pi 키오스크(`hardware/pi`)가 카메라·LCD를, Arduino Nano 펌웨어(`hardware/arduino`)가
+버튼·NeoPixel·버저를 담당합니다. 앱에서 발급한 5분·1회용 코드로 페어링하며 기기 토큰은 4시간 후
+또는 장보기 종료 시 폐기됩니다. 배선과 실행 방법은 `hardware/README.md`를 보세요.
+실물 장치 검증은 아직 완료되지 않았습니다.
+
+---
+
+## 9. 공공 데이터
+
+`config/mfds_public_apis.example.json`에 식약처 공개 API 연동 정보를 정리했습니다
+(식품 원재료 정보, 수입식품 원재료, 식품 QR, 식품영양성분 DB, 건강기능식품 영양 DB, 원재료 코드).
+검색 결과는 참고용이며 실시간 위험 판정은 `data/risk_rules.json`이 담당합니다.
+
+---
+
+## 10. 비밀값 정책
+
+커밋하지 않는 항목:
+
+```text
+.env                                CLOVA 키, 런타임 설정
+infra/terraform/.env.ncloud         Ncloud 액세스/시크릿 키
+infra/terraform/terraform.tfvars    SSH 공개키, 허용 CIDR, 배포 옵션
+*.tfstate, *.tfplan                 Terraform 상태(로그인 키 개인키 포함)
+config/mfds_public_apis.json        공공 API 서비스 키
+data/*.sqlite3, logs/, web/config.js
+```
+
+예제 파일을 복사해서 로컬 값만 채우세요.
 
 ```powershell
 Copy-Item .env.example .env
@@ -68,146 +370,9 @@ Copy-Item config/mfds_public_apis.example.json config/mfds_public_apis.json
 Copy-Item infra/terraform/terraform.tfvars.example infra/terraform/terraform.tfvars
 ```
 
-Then fill only your local copies.
+---
 
-## Backend Quick Start
+## 11. 라이선스
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-Copy-Item .env.example .env
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-Open:
-
-- `http://127.0.0.1:8000/health`
-- `http://127.0.0.1:8000/docs`
-- `http://127.0.0.1:8000/app`
-
-## Zero-Cost Analysis
-
-For development, avoid live CLOVA calls by using text analysis or mock OCR text.
-
-```http
-POST /api/v1/analyze/text
-```
-
-```http
-POST /api/v1/analyze/image
-form-data:
-  file=<label image>
-  profiles=halal,vegan,allergy:milk
-  ocr_mode=mock
-  mock_text=원재료명: 밀, 대두, 우유 함유
-```
-
-Live CLOVA OCR is blocked unless all conditions are met:
-
-- `OCR_PROVIDER=clova`
-- `ALLOW_PAID_OCR=true`
-- CLOVA OCR invoke URL and secret key are configured
-- the daily limit has not been reached
-- the OCR result is not already cached
-
-## Core API
-
-| Method | Path | Purpose |
-|---|---|---|
-| `POST` | `/api/v1/auth/register` | Register and issue session |
-| `POST` | `/api/v1/auth/login` | Login and issue session |
-| `GET` | `/api/v1/me` | Get current user |
-| `PUT` | `/api/v1/me/preferences` | Save dietary criteria |
-| `POST` | `/api/v1/analyze/image` | OCR image and analyze risks |
-| `POST` | `/api/v1/analyze/text` | Analyze text without OCR cost |
-| `GET` | `/api/v1/analysis/{request_id}` | Fetch stored analysis |
-| `GET` | `/api/v1/rules` | Inspect risk rules |
-| `GET` | `/api/v1/costs` | Check Ncloud/OCR/cache status |
-| `GET` | `/health/ocr` | Check OCR configuration and usage |
-| `GET` | `/health/public-apis` | Check public-data API status |
-
-## Flutter App
-
-```powershell
-cd mobile
-flutter pub get
-flutter run --dart-define=SAFE_BYTE_API_BASE=http://127.0.0.1:8000
-```
-
-For a deployed backend:
-
-```powershell
-flutter run --dart-define=SAFE_BYTE_API_BASE=http://YOUR_SERVER_IP
-```
-
-The app flow is intentionally short:
-
-1. Sign up or log in
-2. Select allergy, halal, and vegan criteria
-3. Capture or choose a food-label image
-4. Review a large verdict first
-5. Open details only when evidence is needed
-
-## Docker
-
-```powershell
-Copy-Item .env.example .env
-docker compose up -d --build
-docker compose ps
-curl http://127.0.0.1:8080/health
-```
-
-Default stack:
-
-```text
-Nginx :8080 -> FastAPI :8000 -> Redis + SQLite
-```
-
-Only Nginx is exposed. FastAPI and Redis stay inside the Docker network.
-
-## Ncloud Deployment
-
-Terraform files live in `infra/terraform`.
-
-```powershell
-cd infra/terraform
-terraform init
-terraform plan
-terraform apply
-```
-
-Local Ncloud credentials should stay outside git:
-
-```text
-infra/terraform/.env.ncloud
-infra/terraform/terraform.tfvars
-```
-
-The deployment scripts are designed to upload application code while keeping cloud
-credentials and CLOVA secrets on the server environment.
-
-## Public Food Data
-
-`config/mfds_public_apis.example.json` documents the public-data integrations used for
-reference and future rule enhancement:
-
-- Food raw material information
-- Imported food ingredient information
-- Food QR information service
-- Food nutrition component DB
-- Health functional food nutrition DB
-- Food raw material code
-
-The real-time risk verdict is currently driven by `data/risk_rules.json`.
-
-## Tests
-
-```powershell
-python -m pytest -q
-```
-
-## License
-
-This MVP was built for the Hanium Dream Up project. Add a license file before public
-production use if needed.
+한이음 드림업 프로젝트 MVP입니다. 외부 공개 전에 라이선스 파일을 추가하세요.
+번들된 글꼴(Noto Sans KR, Noto Sans Arabic, Roboto)은 OFL/Apache 라이선스를 따릅니다.

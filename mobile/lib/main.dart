@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'workspace.dart';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -11,33 +14,204 @@ const apiBaseUrl = String.fromEnvironment(
   defaultValue: 'http://127.0.0.1:8000',
 );
 
-// Safe-Byte palette: WWIT Planfit-inspired dark health flow.
-const _ink = Color(0xfff7fbfa);
-const _mutedInk = Color(0xffa7adb7);
-const _canvas = Color(0xff191b20);
-const _paper = Color(0xff252a32);
-const _paperWarm = Color(0xff202329);
-const _line = Color(0xff3a404b);
-const _teal = Color(0xff2de2c6);
-const _blue = Color(0xff87a9ff);
-const _leaf = Color(0xff30d989);
-const _amber = Color(0xffffcf66);
-const _danger = Color(0xffff6f61);
-const _softTeal = Color(0xff203d3a);
-const _softBlue = Color(0xff26314b);
-const _softAmber = Color(0xff3a3124);
-const _softDanger = Color(0xff3f2928);
-const _softLeaf = Color(0xff20372d);
+// Safe-Byte: restrained commercial palette for a utility-style product app.
+const _ink = Color(0xff1f242b);
+const _mutedInk = Color(0xff66727f);
+const _canvas = Color(0xfff3f5f8);
+const _paper = Color(0xffffffff);
+const _paperWarm = Color(0xfff7f8fb);
+const _line = Color(0xffdce2ea);
+const _teal = Color(0xff00b28d);
+const _actionTeal = Color(0xff0d8f76);
+const _blue = Color(0xff3f6fa3);
+const _leaf = Color(0xff1c8a63);
+const _amber = Color(0xff9a6f00);
+const _danger = Color(0xffce4c49);
+const _softTeal = Color(0xffe4f5f1);
+const _softBlue = Color(0xffe8f1f8);
+const _softAmber = Color(0xfffff3d9);
+const _softDanger = Color(0xffffefec);
+const _softLeaf = Color(0xffe9f7f1);
 const _white = Color(0xffffffff);
 const _clear = Color(0x00000000);
 const _scrim = Color(0x99000000);
-const _softShadow = Color(0x42000000);
-const _scanSurface = Color(0xff20252c);
-const _facilitySurface = Color(0xff242b40);
-const _ingredientSurface = Color(0xff2f2825);
-const _dangerBackground = Color(0xff211a1b);
-const _amberBackground = Color(0xff221f18);
-const _passBackground = Color(0xff18211d);
+const _softShadow = Color(0x11000000);
+const _scanSurface = Color(0xffedf4f2);
+const _facilitySurface = Color(0xffedf3f9);
+const _ingredientSurface = Color(0xfff8f1ea);
+const _dangerBackground = Color(0xfffff4f2);
+const _amberBackground = Color(0xfffff9ee);
+const _passBackground = Color(0xfff2f8f4);
+
+ThemeData safeByteTheme() {
+  final scheme = ColorScheme.fromSeed(
+    seedColor: _teal,
+    brightness: Brightness.light,
+  ).copyWith(
+    primary: _actionTeal,
+    secondary: _blue,
+    tertiary: _leaf,
+    error: _danger,
+    surface: _paper,
+    surfaceContainerHighest: _canvas,
+    onSurface: _ink,
+    outline: _line,
+  );
+
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    scaffoldBackgroundColor: _canvas,
+    fontFamily: 'NotoSansKR',
+    iconTheme: const IconThemeData(size: 22, color: _mutedInk),
+    dividerTheme: const DividerThemeData(color: _line, thickness: 1, space: 1),
+    listTileTheme: const ListTileThemeData(
+      iconColor: _mutedInk,
+      minVerticalPadding: 14,
+      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    ),
+    fontFamilyFallback: const [
+      'NotoSansArabic',
+      'Noto Sans CJK KR',
+      'Apple SD Gothic Neo',
+      'Malgun Gothic',
+    ],
+    textTheme: const TextTheme(
+      displaySmall: TextStyle(
+        fontSize: 34,
+        fontWeight: FontWeight.w700,
+        height: 1.08,
+        letterSpacing: 0,
+      ),
+      headlineMedium: TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.w700,
+        height: 1.25,
+        letterSpacing: 0,
+      ),
+      headlineSmall: TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        height: 1.3,
+        letterSpacing: 0,
+      ),
+      titleLarge: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0,
+      ),
+      titleMedium: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0,
+      ),
+      bodyLarge: TextStyle(fontSize: 16, height: 1.45, letterSpacing: 0),
+      bodyMedium: TextStyle(fontSize: 14, height: 1.45, letterSpacing: 0),
+      bodySmall: TextStyle(fontSize: 12, height: 1.35, letterSpacing: 0),
+      labelLarge: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0,
+      ),
+    ).apply(bodyColor: _ink, displayColor: _ink),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: _paper,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _line),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _blue, width: 1.2),
+      ),
+      prefixIconColor: _mutedInk,
+    ),
+    cardTheme: CardThemeData(
+      elevation: 0,
+      color: _paper,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: _line),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: _actionTeal,
+        foregroundColor: _white,
+        minimumSize: const Size.fromHeight(50),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _ink,
+        side: const BorderSide(color: _line),
+        minimumSize: const Size.fromHeight(50),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    ),
+    appBarTheme: const AppBarTheme(
+      centerTitle: false,
+      titleSpacing: 18,
+      titleTextStyle: TextStyle(
+        fontFamily: 'NotoSansKR',
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: _ink,
+      ),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      backgroundColor: _paper,
+      foregroundColor: _ink,
+      surfaceTintColor: _clear,
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: _paper,
+      elevation: 0,
+      selectedItemColor: _actionTeal,
+      unselectedItemColor: _mutedInk,
+      selectedLabelStyle: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        height: 1.2,
+      ),
+      unselectedLabelStyle: TextStyle(fontSize: 11, height: 1.2),
+      showUnselectedLabels: true,
+    ),
+    chipTheme: ChipThemeData(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      side: const BorderSide(color: _line),
+      backgroundColor: _paper,
+      selectedColor: _softTeal,
+      checkmarkColor: _teal,
+    ),
+    dialogTheme: const DialogThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+    ),
+    snackBarTheme: const SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: _ink,
+      contentTextStyle: TextStyle(color: _white),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+      insetPadding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+    ),
+  );
+}
 
 void main() {
   runApp(const SafeByteApp());
@@ -51,7 +225,7 @@ class SafeByteApp extends StatefulWidget {
 }
 
 class _SafeByteAppState extends State<SafeByteApp> {
-  final _api = SafeByteApi(apiBaseUrl);
+  final _api = SafeByteApi(kIsWeb ? Uri.base.origin : apiBaseUrl);
   AppUser? _user;
   String? _token;
   bool _booting = true;
@@ -92,6 +266,14 @@ class _SafeByteAppState extends State<SafeByteApp> {
   }
 
   Future<void> _logout() async {
+    if (_token != null) {
+      try {
+        await _api.request('POST', '/api/v1/auth/logout', _token!);
+      } catch (error) {
+        if (mounted) showSnack(context, error.toString());
+        return;
+      }
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('safeByteToken');
     setState(() {
@@ -106,130 +288,10 @@ class _SafeByteAppState extends State<SafeByteApp> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _teal,
-      brightness: Brightness.dark,
-    ).copyWith(
-      primary: _teal,
-      secondary: _blue,
-      tertiary: _leaf,
-      error: _danger,
-      surface: _paper,
-      surfaceContainerHighest: _canvas,
-      onSurface: _ink,
-      outline: _line,
-    );
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Safe-Byte',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: scheme,
-        scaffoldBackgroundColor: _canvas,
-        fontFamilyFallback: const [
-          'Noto Sans CJK KR',
-          'Apple SD Gothic Neo',
-          'Malgun Gothic',
-        ],
-        textTheme: const TextTheme(
-          displaySmall: TextStyle(
-            fontSize: 36,
-            fontWeight: FontWeight.w900,
-            height: 1.08,
-            letterSpacing: 0,
-          ),
-          headlineMedium: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            height: 1.12,
-            letterSpacing: 0,
-          ),
-          headlineSmall: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            height: 1.18,
-            letterSpacing: 0,
-          ),
-          titleLarge: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
-          titleMedium: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
-          bodyLarge: TextStyle(fontSize: 16, height: 1.45, letterSpacing: 0),
-          bodyMedium: TextStyle(fontSize: 14, height: 1.45, letterSpacing: 0),
-          bodySmall: TextStyle(fontSize: 12, height: 1.35, letterSpacing: 0),
-          labelLarge: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
-        ).apply(bodyColor: _ink, displayColor: _ink),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: _paper,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: _line),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: _line),
-          ),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          color: _paper,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: _line),
-          ),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: _teal,
-            foregroundColor: _canvas,
-            minimumSize: const Size.fromHeight(54),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: _ink,
-            side: const BorderSide(color: _line),
-            minimumSize: const Size.fromHeight(52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: _canvas,
-          foregroundColor: _ink,
-          surfaceTintColor: _clear,
-        ),
-        chipTheme: ChipThemeData(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          side: const BorderSide(color: _line),
-          backgroundColor: _paper,
-          selectedColor: _softTeal,
-          checkmarkColor: _teal,
-        ),
-      ),
+      theme: safeByteTheme(),
       home: _booting
           ? const SplashScreen()
           : _user == null || _token == null
@@ -332,16 +394,17 @@ class _AuthScreenState extends State<AuthScreen> {
 
               return SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
-                  compact ? 18 : 32,
+                  compact ? 24 : 32,
                   compact ? 24 : 42,
-                  compact ? 18 : 32,
+                  compact ? 24 : 32,
                   28,
                 ),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
                       maxWidth: 430,
-                      minHeight: constraints.maxHeight - 64,
+                      minHeight: (constraints.maxHeight - 100)
+                          .clamp(0, double.infinity),
                     ),
                     child: Align(
                       alignment: Alignment.center,
@@ -377,10 +440,12 @@ class _BrandBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
+        color: _paper,
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [_paperWarm, _canvas],
+          colors: [_paper, _paperWarm],
+          stops: [0.0, 1.0],
         ),
       ),
       child: child,
@@ -411,112 +476,105 @@ class _AuthFormPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SurfacePanel(
-      padding: const EdgeInsets.all(20),
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _ByteMark(size: 42),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isLogin ? '로그인' : '계정 만들기',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        isLogin
-                            ? '저장한 기준으로 라벨 검사를 이어갑니다.'
-                            : '기준 설정은 로그인 후 한 번에 진행합니다.',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: _mutedInk),
-                      ),
-                    ],
+    return Form(
+      key: formKey,
+      child: AutofillGroup(
+        child: SurfacePanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: _softTeal,
+                    child:
+                        Icon(Icons.verified_user_outlined, color: _actionTeal),
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    'Safe-Byte',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: _ink,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              Text(isLogin ? '로그인' : '회원가입',
+                  style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 10),
+              Text(
+                isLogin ? '저장한 검사 기준과 기록을 불러와요.' : '나에게 맞는 식품 선택을 시작해 보세요.',
+                style: const TextStyle(color: _mutedInk),
+              ),
+              const SizedBox(height: 32),
+              if (!isLogin) ...[
+                TextFormField(
+                  controller: name,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: '이름 또는 닉네임',
+                    prefixIcon: Icon(Icons.person_outline),
                   ),
                 ),
+                const SizedBox(height: 16),
               ],
-            ),
-            const SizedBox(height: 18),
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: true,
-                  icon: Icon(Icons.login),
-                  label: Text('로그인'),
-                ),
-                ButtonSegment(
-                  value: false,
-                  icon: Icon(Icons.person_add_alt_1),
-                  label: Text('가입'),
-                ),
-              ],
-              selected: {isLogin},
-              onSelectionChanged:
-                  loading ? null : (value) => onModeChanged(value.first),
-            ),
-            const SizedBox(height: 18),
-            if (!isLogin) ...[
               TextFormField(
-                controller: name,
+                controller: email,
+                keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.email],
                 decoration: const InputDecoration(
-                  labelText: '이름 또는 닉네임',
-                  prefixIcon: Icon(Icons.person_outline),
+                  labelText: '이메일',
+                  prefixIcon: Icon(Icons.mail_outline),
                 ),
+                validator: (value) => (value?.trim() ?? '').contains('@')
+                    ? null
+                    : '이메일을 입력해 주세요.',
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: password,
+                obscureText: true,
+                autofillHints: [
+                  isLogin ? AutofillHints.password : AutofillHints.newPassword
+                ],
+                decoration: const InputDecoration(
+                  labelText: '비밀번호',
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
+                validator: (value) =>
+                    (value ?? '').length >= 6 ? null : '6자 이상 입력해 주세요.',
+                onFieldSubmitted: (_) => onSubmit(),
+              ),
+              const SizedBox(height: 28),
+              FilledButton(
+                onPressed: loading ? null : onSubmit,
+                child: loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(isLogin ? '로그인하고 시작하기' : '가입하고 기준 설정'),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(isLogin ? '처음 이용하시나요?' : '이미 계정이 있나요?',
+                      style: const TextStyle(color: _mutedInk, fontSize: 13)),
+                  TextButton(
+                      onPressed: loading ? null : () => onModeChanged(!isLogin),
+                      child: Text(isLogin ? '회원가입' : '로그인')),
+                ],
+              ),
             ],
-            TextFormField(
-              controller: email,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(
-                labelText: '이메일',
-                prefixIcon: Icon(Icons.mail_outline),
-              ),
-              validator: (value) {
-                final text = value?.trim() ?? '';
-                return text.contains('@') ? null : '이메일을 입력해주세요.';
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: password,
-              obscureText: true,
-              autofillHints: const [AutofillHints.password],
-              decoration: const InputDecoration(
-                labelText: '비밀번호',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
-              validator: (value) {
-                final text = value ?? '';
-                return text.length >= 6 ? null : '6자 이상 입력해주세요.';
-              },
-              onFieldSubmitted: (_) => onSubmit(),
-            ),
-            const SizedBox(height: 22),
-            FilledButton.icon(
-              onPressed: loading ? null : onSubmit,
-              icon: loading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(isLogin ? Icons.login : Icons.arrow_forward),
-              label: Text(isLogin ? '로그인하기' : '가입하고 기준 설정'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -550,6 +608,20 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _statusLoading = true;
   OcrHealth? _health;
   CostSummary? _costs;
+  Map<String, dynamic>? _scanContext;
+  int _section = 0;
+
+  Future<void> _openWorkspace([int tab = 0]) async {
+    final selected = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+          builder: (_) => WorkspaceScreen(
+              api: widget.api,
+              token: widget.token,
+              user: widget.user,
+              initialTab: tab)),
+    );
+    if (selected != null && mounted) _selectScanContext(selected);
+  }
 
   @override
   void initState() {
@@ -576,12 +648,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _pick(ImageSource source) async {
     if (_loading) return;
-    final image = await _picker.pickImage(
-      source: source,
-      maxWidth: 2200,
-      imageQuality: 92,
-    );
-    if (image != null) setState(() => _image = image);
+    try {
+      final image = await _picker.pickImage(
+          source: source, maxWidth: 2200, imageQuality: 92);
+      if (image != null && mounted) setState(() => _image = image);
+    } catch (_) {
+      if (mounted) showSnack(context, '사진을 불러오지 못했어요. 카메라·사진 접근 권한을 확인해주세요.');
+    }
   }
 
   Future<void> _analyze() async {
@@ -594,13 +667,35 @@ class _HomeScreenState extends State<HomeScreen> {
       final result = await widget.api.analyzeImage(
         token: widget.token,
         image: _image!,
-        profiles: widget.user.profiles,
+        profiles: _scanContext == null
+            ? widget.user.profiles
+            : List<String>.from(_scanContext!['profiles']),
+        language: _scanContext?['language'] as String? ?? 'ko',
       );
+      if (_scanContext?['cart_id'] != null) {
+        try {
+          await widget.api.request('POST',
+              '/api/v1/carts/${_scanContext!['cart_id']}/items', widget.token,
+              body: {
+                'request_id': result.requestId,
+                'name': '스캔한 상품',
+                'quantity': 1
+              });
+        } catch (_) {
+          if (mounted) {
+            showSnack(
+                context, '분석 결과는 저장했지만 장바구니에 담지 못했어요. 장보기가 종료됐는지 확인해주세요.');
+          }
+        }
+      }
       await _refreshStatus();
       if (!mounted) return;
-      await Navigator.of(
+      final selected = await Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => ResultScreen(result: result)));
+      ).push<Map<String, dynamic>>(MaterialPageRoute(
+          builder: (_) => ResultScreen(
+              result: result, api: widget.api, token: widget.token)));
+      if (selected != null && mounted) _selectScanContext(selected);
     } catch (error) {
       if (mounted) showSnack(context, error.toString());
     } finally {
@@ -621,124 +716,346 @@ class _HomeScreenState extends State<HomeScreen> {
     if (updated != null) widget.onUserChanged(updated);
   }
 
+  void _selectScanContext(Map<String, dynamic> selected) {
+    setState(() {
+      _scanContext = selected;
+      _section = 0;
+    });
+  }
+
+  Future<void> _openSavedProducts() async {
+    final selected = await Navigator.push<Map<String, dynamic>>(
+        context,
+        MaterialPageRoute(
+            builder: (_) =>
+                SavedProductsScreen(api: widget.api, token: widget.token)));
+    if (selected != null && mounted) _selectScanContext(selected);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const _ByteMark(size: 34),
-                const SizedBox(width: 8),
-                Text(
-                  'Safe-Byte',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ],
-            ),
-            actions: [
-              IconButton(
-                tooltip: '내 기준',
-                onPressed: _openSettings,
-                icon: const Icon(Icons.tune),
-              ),
-              IconButton(
-                tooltip: '로그아웃',
-                onPressed: widget.onLogout,
-                icon: const Icon(Icons.logout),
-              ),
+    final userName = widget.user.displayName;
+    final profiles = _scanContext == null
+        ? widget.user.profiles
+        : List<String>.from(_scanContext!['profiles']);
+    return Stack(children: [
+      Scaffold(
+        appBar: _section == 0 || _section == 3
+            ? AppBar(
+                title: Text(_section == 0 ? 'Safe-Byte' : '내 정보',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                        letterSpacing: -0.5)),
+                actions: [
+                  IconButton(
+                      tooltip: '내 검사 기준',
+                      onPressed: _openSettings,
+                      icon: const Icon(Icons.tune_outlined)),
+                  const SizedBox(width: 12)
+                ],
+              )
+            : null,
+        bottomNavigationBar: DecoratedBox(
+          decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: _line))),
+          child: BottomNavigationBar(
+            currentIndex: _section,
+            backgroundColor: _white,
+            elevation: 0,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: _actionTeal,
+            unselectedItemColor: _mutedInk,
+            selectedFontSize: 11,
+            unselectedFontSize: 11,
+            selectedLabelStyle:
+                const TextStyle(fontWeight: FontWeight.w700, height: 1.8),
+            unselectedLabelStyle: const TextStyle(height: 1.8),
+            onTap: (value) => setState(() => _section = value),
+            items: const [
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home),
+                  label: '홈'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.shopping_bag_outlined),
+                  activeIcon: Icon(Icons.shopping_bag),
+                  label: '장바구니'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.history_outlined), label: '기록'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  activeIcon: Icon(Icons.person),
+                  label: '내 정보'),
             ],
           ),
-          body: _BrandBackdrop(
-            child: SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final wide = constraints.maxWidth >= 840;
-                  final content = wide
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 340,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _UserContextPanel(user: widget.user),
-                                  const SizedBox(height: 14),
-                                  _StatusPanel(
-                                    health: _health,
-                                    costs: _costs,
-                                    loading: _statusLoading,
-                                    onRefresh: _refreshStatus,
-                                  ),
-                                  const SizedBox(height: 14),
-                                  const _HintPanel(),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: _CapturePanel(
-                                image: _image,
-                                loading: _loading,
-                                onCamera: () => _pick(ImageSource.camera),
-                                onGallery: () => _pick(ImageSource.gallery),
-                                onAnalyze: _analyze,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _UserContextPanel(user: widget.user),
-                            const SizedBox(height: 14),
-                            _CapturePanel(
-                              image: _image,
-                              loading: _loading,
-                              onCamera: () => _pick(ImageSource.camera),
-                              onGallery: () => _pick(ImageSource.gallery),
-                              onAnalyze: _analyze,
-                            ),
-                            const SizedBox(height: 14),
-                            _StatusPanel(
-                              health: _health,
-                              costs: _costs,
-                              loading: _statusLoading,
-                              onRefresh: _refreshStatus,
-                            ),
-                            const SizedBox(height: 14),
-                            const _HintPanel(),
-                          ],
-                        );
-
-                  return ListView(
-                    padding: EdgeInsets.fromLTRB(
-                      wide ? 28 : 16,
-                      10,
-                      wide ? 28 : 16,
-                      26,
-                    ),
-                    children: [
-                      Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1120),
-                          child: content,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
         ),
-        if (_loading) const LoadingOverlay(),
-      ],
-    );
+        body: _section == 1 || _section == 2
+            ? WorkspaceScreen(
+                key: ValueKey(_section),
+                api: widget.api,
+                token: widget.token,
+                user: widget.user,
+                initialTab: _section == 1 ? 1 : 2,
+                embedded: true,
+                onSelected: _selectScanContext,
+                initialProfiles: _scanContext == null ? null : profiles,
+                initialLanguage: _scanContext?['language'] as String? ?? 'ko')
+            : SafeArea(
+                child: Center(
+                    child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: ListView(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+                    children: _section == 3
+                        ? [
+                            Text('$userName님',
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall),
+                            const SizedBox(height: 6),
+                            Text(widget.user.email,
+                                style: const TextStyle(color: _mutedInk)),
+                            const SizedBox(height: 32),
+                            const Divider(),
+                            ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(Icons.tune_outlined),
+                                title: const Text('내 검사 기준'),
+                                subtitle: Text(widget.user.profiles.isEmpty
+                                    ? '검사할 성분을 설정해 주세요'
+                                    : widget.user.profiles
+                                        .map(profileLabel)
+                                        .join(', ')),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: _openSettings),
+                            ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(Icons.people_outline),
+                                title: const Text('가족 기준 관리'),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => _openWorkspace()),
+                            ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(Icons.bookmark_border),
+                                title: const Text('저장한 상품'),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: _openSavedProducts),
+                            const SizedBox(height: 16),
+                            const Divider(),
+                            ExpansionTile(
+                                tilePadding: EdgeInsets.zero,
+                                title: const Text('서비스 연결 상태'),
+                                children: [
+                                  _StatusPanel(
+                                      health: _health,
+                                      costs: _costs,
+                                      loading: _statusLoading,
+                                      onRefresh: _refreshStatus)
+                                ]),
+                            const SizedBox(height: 16),
+                            Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton(
+                                    onPressed: widget.onLogout,
+                                    style: TextButton.styleFrom(
+                                        foregroundColor: _mutedInk),
+                                    child: const Text('로그아웃'))),
+                          ]
+                        : [
+                            Text('$userName님, 안녕하세요',
+                                style: const TextStyle(
+                                    color: _mutedInk, fontSize: 14)),
+                            const SizedBox(height: 8),
+                            Text('식품 라벨 확인',
+                                style:
+                                    Theme.of(context).textTheme.headlineMedium),
+                            const SizedBox(height: 8),
+                            const Text('피하고 싶은 성분이 있는지 확인해요.',
+                                style: TextStyle(color: _mutedInk)),
+                            const SizedBox(height: 28),
+                            if (_scanContext != null) ...[
+                              Row(children: [
+                                const Icon(Icons.check_circle_outline,
+                                    size: 18, color: _actionTeal),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                    child: Text(
+                                        '적용 중: ${_scanContext!['name']}',
+                                        style: const TextStyle(
+                                            color: _actionTeal))),
+                                IconButton(
+                                    tooltip: '내 기준으로 돌아가기',
+                                    onPressed: () =>
+                                        setState(() => _scanContext = null),
+                                    icon: const Icon(Icons.close, size: 20))
+                              ]),
+                              const SizedBox(height: 8),
+                            ],
+                            if (_image == null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                    color: _paper,
+                                    borderRadius: BorderRadius.circular(16)),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Padding(
+                                                padding:
+                                                    EdgeInsets.only(top: 2),
+                                                child: Icon(
+                                                    Icons
+                                                        .document_scanner_outlined,
+                                                    color: _ink,
+                                                    size: 24)),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                                child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                  Text('원재료명을 찍어주세요',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleMedium),
+                                                  const SizedBox(height: 6),
+                                                  const Text(
+                                                      '글자가 잘 보이도록 가까이 촬영해 주세요.',
+                                                      style: TextStyle(
+                                                          color: _mutedInk,
+                                                          fontSize: 13,
+                                                          height: 1.5)),
+                                                ])),
+                                          ]),
+                                      const SizedBox(height: 24),
+                                      FilledButton(
+                                          onPressed: () =>
+                                              _pick(ImageSource.camera),
+                                          child: const Text('라벨 촬영하기')),
+                                    ]),
+                              ),
+                              const SizedBox(height: 4),
+                              Center(
+                                  child: TextButton(
+                                      onPressed: () =>
+                                          _pick(ImageSource.gallery),
+                                      style: TextButton.styleFrom(
+                                          foregroundColor: _mutedInk,
+                                          minimumSize: const Size(160, 48)),
+                                      child: const Text('앨범에서 불러오기'))),
+                            ] else ...[
+                              _CapturePanel(
+                                  image: _image,
+                                  loading: _loading,
+                                  onCamera: () => _pick(ImageSource.camera),
+                                  onGallery: () => _pick(ImageSource.gallery),
+                                  onAnalyze: _analyze),
+                              TextButton(
+                                  onPressed: () =>
+                                      setState(() => _image = null),
+                                  child: const Text('사진 선택 취소')),
+                            ],
+                            const SizedBox(height: 20),
+                            Row(children: [
+                              Expanded(
+                                  child: Text('검사 기준',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium)),
+                              TextButton(
+                                  onPressed: _openSettings,
+                                  child: const Text('변경'))
+                            ]),
+                            const SizedBox(height: 4),
+                            if (profiles.isEmpty)
+                              const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Text('알레르기나 식이 기준을 먼저 선택해 주세요.',
+                                      style: TextStyle(color: _mutedInk)))
+                            else
+                              Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: profiles
+                                      .map((profile) => Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 8),
+                                            decoration: BoxDecoration(
+                                                color: _paper,
+                                                borderRadius:
+                                                    BorderRadius.circular(8)),
+                                            child: Text(profileLabel(profile),
+                                                style: const TextStyle(
+                                                    fontSize: 13)),
+                                          ))
+                                      .toList()),
+                            const SizedBox(height: 28),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                            _HomeShortcut(
+                                icon: Icons.people_outline,
+                                title: '가족 기준',
+                                subtitle: '가족에게 맞는 성분도 함께 확인해요',
+                                onTap: () => _openWorkspace()),
+                            _HomeShortcut(
+                                icon: Icons.shopping_bag_outlined,
+                                title: '장보기 시작',
+                                subtitle: '확인한 상품을 장바구니에 모아요',
+                                onTap: () => setState(() => _section = 1)),
+                            const SizedBox(height: 20),
+                            const Text('분석 결과와 함께 제품의 실제 표시사항을 확인해 주세요.',
+                                style: TextStyle(
+                                    color: _mutedInk,
+                                    fontSize: 12,
+                                    height: 1.6)),
+                          ]),
+              ))),
+      ),
+      if (_loading) const LoadingOverlay()
+    ]);
   }
+}
+
+class _HomeShortcut extends StatelessWidget {
+  const _HomeShortcut(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      required this.onTap});
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => SurfacePanel(
+        borderColor: _line,
+        color: _paper,
+        padding: const EdgeInsets.all(0),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+          leading: Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _softBlue,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: _actionTeal),
+          ),
+          title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          subtitle: Text(subtitle,
+              style: const TextStyle(color: _mutedInk, fontSize: 12)),
+          trailing: const Icon(Icons.chevron_right, size: 20, color: _mutedInk),
+          onTap: onTap,
+        ),
+      );
 }
 
 class PreferencesScreen extends StatefulWidget {
@@ -844,12 +1161,15 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       body: _BrandBackdrop(
         child: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
             children: [
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
                   child: SurfacePanel(
+                    color: _white,
+                    borderColor: _clear,
+                    padding: EdgeInsets.zero,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -859,7 +1179,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '결과는 선택한 기준에 맞춰 위험 성분만 우선해서 보여줍니다. 알레르기는 검색으로 찾아 선택하세요.',
+                          '피하고 싶은 성분과 식이 기준을 선택해 주세요.',
                           style: Theme.of(
                             context,
                           ).textTheme.bodyMedium?.copyWith(color: _mutedInk),
@@ -869,7 +1189,6 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                           controller: _name,
                           decoration: const InputDecoration(
                             labelText: '이름 또는 닉네임',
-                            prefixIcon: Icon(Icons.person_outline),
                           ),
                         ),
                         const SizedBox(height: 18),
@@ -912,15 +1231,17 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
 }
 
 class ResultScreen extends StatelessWidget {
-  const ResultScreen({required this.result, super.key});
+  const ResultScreen({required this.result, this.api, this.token, super.key});
 
   final AnalysisResult result;
+  final SafeByteApi? api;
+  final String? token;
 
   @override
   Widget build(BuildContext context) {
     final scheme = resultScheme(result.finalLevel);
     return Scaffold(
-      backgroundColor: scheme.background,
+      backgroundColor: _canvas,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -963,6 +1284,10 @@ class ResultScreen extends StatelessWidget {
                           icon: const Icon(Icons.camera_alt_outlined),
                           label: const Text('다른 라벨 확인'),
                         ),
+                        if (result.extra.isNotEmpty) ...[
+                          const SizedBox(height: 18),
+                          ResultExtras(result: result, api: api, token: token),
+                        ],
                       ],
                     ),
                   ),
@@ -1024,6 +1349,14 @@ void showResultDetails(BuildContext context, AnalysisResult result) {
                 ),
                 ...result.facilityDetections.map(DetectionTile.new),
               ],
+              if (result.unknownDetections.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const _SectionHeader(
+                    icon: Icons.help_outline,
+                    title: '문맥 확인 필요',
+                    description: '직접 함유 여부를 확정하지 못한 항목입니다.'),
+                ...result.unknownDetections.map(DetectionTile.new),
+              ],
               const SizedBox(height: 12),
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
@@ -1041,86 +1374,6 @@ void showResultDetails(BuildContext context, AnalysisResult result) {
       );
     },
   );
-}
-
-class _UserContextPanel extends StatelessWidget {
-  const _UserContextPanel({required this.user});
-
-  final AppUser user;
-
-  @override
-  Widget build(BuildContext context) {
-    return SurfacePanel(
-      color: _paper,
-      borderColor: _line,
-      shadowColor: _softShadow,
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              _SmallPill(text: 'READY', color: _leaf),
-              Spacer(),
-              Icon(
-                Icons.verified_user_outlined,
-                color: _teal,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${user.displayName}님,\n오늘 라벨 체크',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(color: _ink),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: user.profiles
-                .map((profile) => _ProfileBadge(profile: profile))
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileBadge extends StatelessWidget {
-  const _ProfileBadge({required this.profile});
-
-  final String profile;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: _paperWarm,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _line),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(profileIcon(profile), size: 16, color: _teal),
-            const SizedBox(width: 6),
-            Text(
-              profileLabel(profile),
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: _ink,
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _CapturePanel extends StatelessWidget {
@@ -1203,10 +1456,13 @@ class _CapturePanel extends StatelessWidget {
                       padding: const EdgeInsets.all(8),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(6),
-                        child: Image.file(
-                          File(image!.path),
-                          fit: BoxFit.contain,
-                        ),
+                        child: FutureBuilder<Uint8List>(
+                            future: image!.readAsBytes(),
+                            builder: (context, snapshot) => snapshot.hasData
+                                ? Image.memory(snapshot.data!,
+                                    fit: BoxFit.contain)
+                                : const Center(
+                                    child: CircularProgressIndicator())),
                       ),
                     ),
                   const _ScanFrameOverlay(),
@@ -1259,7 +1515,7 @@ class _CapturePanel extends StatelessWidget {
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: loading || image == null ? null : onAnalyze,
-            icon: const Icon(Icons.bolt_outlined),
+            icon: const Icon(Icons.search),
             label: Text(image == null ? '사진 선택 후 분석 가능' : '라벨 분석하기'),
           ),
         ],
@@ -1533,21 +1789,6 @@ class _AllergySelectorState extends State<AllergySelector> {
           children: [
             Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: _softAmber,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.health_and_safety_outlined,
-                    color: _amber,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     '내 알레르기 기준',
@@ -1566,7 +1807,7 @@ class _AllergySelectorState extends State<AllergySelector> {
             Text(
               broad
                   ? '세부 항목을 고르지 않으면 국내 표시 대상 알레르기를 전체 검사합니다.'
-                  : '검색, 묶음, 카테고리로 필요한 항목만 골라 검사합니다.',
+                  : '피해야 하는 성분을 선택해 주세요.',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: _mutedInk),
@@ -1577,7 +1818,7 @@ class _AllergySelectorState extends State<AllergySelector> {
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: '예: 우유, nut, seafood, 돼지고기',
+                hintText: '성분 검색 (예: 우유, 땅콩)',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _search.text.isEmpty
                     ? null
@@ -1604,14 +1845,12 @@ class _AllergySelectorState extends State<AllergySelector> {
               children: [
                 FilterChip(
                   selected: broad,
-                  avatar: const Icon(Icons.fact_check_outlined, size: 18),
                   label: const Text('국내 표시 대상 전체'),
                   onSelected: (_) => widget.onChanged('allergy'),
                 ),
                 for (final bundle in allergyBundles)
                   FilterChip(
                     selected: bundle.tokens.every(widget.selected.contains),
-                    avatar: Icon(bundle.icon, size: 18),
                     label: Text(bundle.label),
                     onSelected: (_) => _toggleBundle(bundle),
                   ),
@@ -1624,7 +1863,6 @@ class _AllergySelectorState extends State<AllergySelector> {
                 runSpacing: 8,
                 children: selectedChoices.map((choice) {
                   return InputChip(
-                    avatar: Icon(choice.icon, size: 18),
                     label: Text(choice.label),
                     onDeleted: () => widget.onChanged(choice.token),
                   );
@@ -1656,7 +1894,6 @@ class _AllergySelectorState extends State<AllergySelector> {
                 return FilterChip(
                   selected: checked,
                   label: Text(choice.label),
-                  avatar: Icon(choice.icon, size: 18),
                   onSelected: (_) => widget.onChanged(choice.token),
                 );
               }).toList(),
@@ -1705,21 +1942,6 @@ class ProfileGoalTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: selected ? _paper : _canvas,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                profileIcon(profile),
-                size: 20,
-                color: selected ? _teal : _mutedInk,
-              ),
-            ),
-            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1791,7 +2013,11 @@ class DetectionTile extends StatelessWidget {
                         ),
                       ),
                       _SmallPill(
-                        text: detection.isFacilityShared ? '공유시설' : '직접',
+                        text: detection.isFacilityShared
+                            ? '공유시설'
+                            : detection.occurrenceType == 'unknown'
+                                ? '확인 필요'
+                                : '직접',
                         color: color,
                       ),
                     ],
@@ -1836,7 +2062,7 @@ class SurfacePanel extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
@@ -1871,12 +2097,12 @@ class LoadingOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'CLOVA OCR 분석 중',
+                '라벨을 확인하고 있어요',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 6),
               Text(
-                '한 번만 눌러도 충분해요. 결과가 나올 때까지 기다려주세요.',
+                '원재료명과 알레르기 표시를 읽고 있어요.',
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
@@ -1901,36 +2127,20 @@ class _VerdictHero extends StatelessWidget {
     return SurfacePanel(
       color: scheme.panel,
       borderColor: scheme.foreground.withValues(alpha: 0.18),
-      shadowColor: scheme.foreground.withValues(alpha: 0.12),
+      shadowColor: _clear,
       padding: const EdgeInsets.all(22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _SmallPill(text: result.finalLevel, color: scheme.foreground),
-              const Spacer(),
-              Container(
-                width: 72,
-                height: 72,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _paper.withValues(alpha: 0.86),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: scheme.foreground.withValues(alpha: 0.16),
-                  ),
-                ),
-                child: Icon(
-                  resultIcon(result.finalLevel),
-                  size: 42,
-                  color: scheme.foreground,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
+          Row(children: [
+            Icon(resultIcon(result.finalLevel),
+                size: 24, color: scheme.foreground),
+            const SizedBox(width: 8),
+            Text('검사 결과',
+                style: TextStyle(
+                    color: scheme.foreground, fontWeight: FontWeight.w600)),
+          ]),
+          const SizedBox(height: 20),
           Text(
             verdictTitle(result.finalLevel),
             style: Theme.of(
@@ -1953,21 +2163,6 @@ class _VerdictHero extends StatelessWidget {
                   ),
             ),
           ],
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _SmallPill(
-                text: '직접 ${result.directDetections.length}',
-                color: scheme.foreground,
-              ),
-              _SmallPill(
-                text: '제조시설 ${result.facilityDetections.length}',
-                color: scheme.foreground,
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -1991,32 +2186,10 @@ class _ResultCounts extends StatelessWidget {
           label: '제조시설',
           value: '${result.facilityDetections.length}',
         ),
-        _MetricChip(label: 'OCR', value: result.ocrProvider),
-        _MetricChip(label: 'Cache', value: result.cacheLabel),
+        if (result.unknownDetections.isNotEmpty)
+          _MetricChip(
+              label: '문맥 확인', value: '${result.unknownDetections.length}'),
       ],
-    );
-  }
-}
-
-class _HintPanel extends StatelessWidget {
-  const _HintPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    return SurfacePanel(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.lightbulb_outline, color: _amber),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '첫 결과는 크게 판정만 보여주고, 세부 설명에서 직접 함유와 제조시설 공유 표기를 나눠 확인합니다.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -2233,45 +2406,28 @@ class _SmallPill extends StatelessWidget {
   }
 }
 
-class _ByteMark extends StatelessWidget {
-  const _ByteMark({this.size = 34});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Safe-Byte logo',
-      image: true,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(size * 0.22),
-          boxShadow: [
-            BoxShadow(
-              color: _teal.withValues(alpha: 0.12),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Image.asset(
-          'assets/app_logo.png',
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.high,
-        ),
-      ),
-    );
-  }
-}
-
 class SafeByteApi {
   SafeByteApi(String baseUrl)
       : baseUrl = baseUrl.replaceAll(RegExp(r'/+$'), '');
 
   final String baseUrl;
+
+  Future<Map<String, dynamic>> request(String method, String path, String token,
+      {Map<String, dynamic>? body}) async {
+    final request = http.Request(method, Uri.parse('$baseUrl$path'));
+    request.headers.addAll(
+        {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'});
+    if (body != null) request.body = jsonEncode(body);
+    try {
+      final response = await http.Response.fromStream(
+          await request.send().timeout(const Duration(seconds: 30)));
+      return _checkedJson(response);
+    } on TimeoutException {
+      throw ApiException('요청 시간이 초과되었습니다. 다시 시도해주세요.');
+    } on SocketException {
+      throw ApiException('서버 연결을 확인해주세요.');
+    }
+  }
 
   Future<AuthSession> register({
     required String email,
@@ -2335,6 +2491,7 @@ class SafeByteApi {
     required String token,
     required XFile image,
     required List<String> profiles,
+    String language = 'ko',
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -2342,13 +2499,18 @@ class SafeByteApi {
     );
     request.headers['Authorization'] = 'Bearer $token';
     request.fields['profiles'] = profiles.join(',');
+    request.fields['language'] = language;
     request.fields['ocr_mode'] = 'live';
     request.fields['force_ocr'] = 'false';
-    request.files.add(await http.MultipartFile.fromPath('file', image.path));
+    request.files.add(http.MultipartFile.fromBytes(
+        'file', await image.readAsBytes(),
+        filename: image.name));
 
     final http.StreamedResponse streamed;
     try {
-      streamed = await request.send();
+      streamed = await request.send().timeout(const Duration(seconds: 90));
+    } on TimeoutException {
+      throw ApiException('분석 시간이 초과되었습니다. 촬영 상태와 연결을 확인해주세요.');
     } on SocketException {
       throw ApiException('서버에 연결하지 못했습니다. 네트워크 또는 배포 서버 상태를 확인해주세요.');
     } on http.ClientException catch (error) {
@@ -2358,7 +2520,8 @@ class SafeByteApi {
     final body = await streamed.stream.bytesToString();
     final decoded = _decodeBody(body, statusCode: streamed.statusCode);
     if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
-      throw ApiException(_errorMessage(decoded, statusCode: streamed.statusCode));
+      throw ApiException(
+          _errorMessage(decoded, statusCode: streamed.statusCode));
     }
     return AnalysisResult.fromJson(decoded);
   }
@@ -2409,7 +2572,9 @@ class SafeByteApi {
 
   Future<http.Response> _sendJson(Future<http.Response> Function() send) async {
     try {
-      return await send();
+      return await send().timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      throw ApiException('요청 시간이 초과되었습니다. 다시 시도해주세요.');
     } on SocketException {
       throw ApiException('서버에 연결하지 못했습니다. 네트워크 또는 배포 서버 상태를 확인해주세요.');
     } on http.ClientException catch (error) {
@@ -2420,7 +2585,8 @@ class SafeByteApi {
   Map<String, dynamic> _checkedJson(http.Response response) {
     final decoded = _decodeBody(response.body, statusCode: response.statusCode);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(_errorMessage(decoded, statusCode: response.statusCode));
+      throw ApiException(
+          _errorMessage(decoded, statusCode: response.statusCode));
     }
     return decoded;
   }
@@ -2545,6 +2711,8 @@ class AnalysisResult {
     required this.ocrText,
     required this.directDetections,
     required this.facilityDetections,
+    this.unknownDetections = const [],
+    this.extra = const {},
   });
 
   final String requestId;
@@ -2556,6 +2724,8 @@ class AnalysisResult {
   final String ocrText;
   final List<Detection> directDetections;
   final List<Detection> facilityDetections;
+  final List<Detection> unknownDetections;
+  final Map<String, dynamic> extra;
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) {
     final risk = json['risk'] as Map<String, dynamic>? ?? {};
@@ -2574,11 +2744,16 @@ class AnalysisResult {
       paid: ocr['called_paid_api'] as bool? ?? false,
       ocrText: (ocr['corrected_text'] ?? ocr['text'] ?? '') as String,
       directDetections: detections
-          .where((item) => !item.isFacilityShared)
+          .where((item) =>
+              !item.isFacilityShared && item.occurrenceType != 'unknown')
           .toList(growable: false),
       facilityDetections: detections
           .where((item) => item.isFacilityShared)
           .toList(growable: false),
+      unknownDetections: detections
+          .where((item) => item.occurrenceType == 'unknown')
+          .toList(growable: false),
+      extra: json,
     );
   }
 }
@@ -2675,7 +2850,7 @@ IconData resultIcon(String level) {
 String verdictTitle(String level) {
   switch (level) {
     case 'DANGER':
-      return '먹기 전 멈춰요';
+      return '주의 성분이 있어요';
     case 'CAUTION':
       return '한 번 더 확인하세요';
     default:
@@ -2686,7 +2861,7 @@ String verdictTitle(String level) {
 String verdictSubtitle(AnalysisResult result) {
   switch (result.finalLevel) {
     case 'DANGER':
-      return '직접 함유 위험 성분 ${result.directDetections.length}개가 감지됐습니다.';
+      return '피해야 할 성분 ${result.directDetections.length}개가 포함되어 있어요.';
     case 'CAUTION':
       return '제조시설 공유 또는 확인 필요한 성분이 있습니다.';
     default:
