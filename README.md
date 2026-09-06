@@ -97,6 +97,54 @@ curl.exe -H "Authorization: Bearer $($auth.token)" `
      http://101.79.20.37/api/v1/analyze/image
 ```
 
+### 다른 앱에서 이 API를 쓸 때
+
+**`/api/v1/*`는 헬스체크와 `auth/*`, `rules`, `samples`, `costs`, `devices/redeem`을 빼면 전부 토큰이 필요합니다.**
+헤더가 없으면 `401 authorization header is required`가 돌아옵니다. 분석 결과는 사용자 소유라
+익명 호출을 허용하지 않습니다. 순서는 `register`(최초 1회) → `login` → 이후 모든 요청에 헤더를 붙입니다.
+토큰 수명은 30일이고, `POST /api/v1/auth/logout`을 부르면 즉시 무효화됩니다.
+
+```bash
+# 1) 로그인해서 토큰 받기
+TOKEN=$(curl -s -X POST http://101.79.20.37/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"..."}' | jq -r .token)
+
+# 2) 이후 모든 호출에 붙이기 (본문은 UTF-8 파일로 보내세요)
+cat > body.json <<'JSON'
+{"text":"원재료명: 밀가루, 우유","profiles":["allergy:milk"]}
+JSON
+curl -X POST http://101.79.20.37/api/v1/analyze/text \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  --data-binary @body.json
+```
+
+> 한글을 `-d '...'`에 그대로 넣으면 Windows 터미널(Git Bash·cmd)이 인코딩을 깨뜨려
+> `400 There was an error parsing the body`가 납니다. API 문제가 아니라 셸 문제이므로
+> UTF-8 파일이나 Python·JS 클라이언트를 쓰세요.
+
+```javascript
+const { token } = await fetch('http://101.79.20.37/api/v1/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, password }),
+}).then((r) => r.json());
+
+const result = await fetch('http://101.79.20.37/api/v1/analyze/image', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${token}` },   // FormData 쓸 때 Content-Type은 직접 넣지 마세요
+  body: formData,                                   // file, profiles, language, ocr_mode
+}).then((r) => r.json());
+```
+
+브라우저에서 호출한다면 출처가 서버의 허용 목록에 있어야 합니다. 현재 `localhost`/`127.0.0.1`의
+`3000`, `4200`, `5173`, `8080` 포트와 `http://101.79.20.37`이 열려 있습니다. 다른 출처를 쓰면
+로컬 `.env`의 `CORS_ALLOWED_ORIGINS`에 추가하고 재배포하세요. 서버끼리 호출하거나 curl·Postman을
+쓸 때는 CORS가 적용되지 않습니다.
+
+카트 기기(라즈베리파이)는 이 경로가 아니라 앱이 발급한 페어링 코드로 동작합니다
+(`carts/{id}/pair` → `devices/redeem` → `devices/analyze`). 기기에는 이메일·비밀번호를 넣지 않습니다.
+
 ### 전체 기능 자동 점검 (OCR 0회 소모)
 
 ```powershell
