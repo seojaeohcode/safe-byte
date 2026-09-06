@@ -35,9 +35,12 @@
 | `http://101.79.20.37/health` | 서버 상태 |
 | `http://101.79.20.37/health/ocr` | OCR 제공자·한도·오늘 사용량 |
 | `http://101.79.20.37/api/v1/costs` | OCR 비용/캐시/서버 요약 |
+| `http://101.79.20.37/docs` | Swagger UI (연동 개발용) |
+| `http://101.79.20.37/openapi.json` | OpenAPI 스펙 |
 
-> 운영 서버는 `ENABLE_DOCS=false`이므로 `/docs`, `/openapi.json`은 열리지 않습니다.
-> Swagger UI가 필요하면 아래 "로컬 개발"로 띄우세요.
+> Swagger는 `enable_docs = true`(`infra/terraform/terraform.tfvars`)로 열어둔 상태입니다.
+> API 전체 구조가 공개되므로 외부 공개 서비스로 전환할 때는 `false`로 되돌리세요.
+> `/docs`만 Swagger CDN을 허용하도록 CSP를 따로 두었고 나머지 경로는 그대로 엄격합니다.
 
 ### 현재 제약
 

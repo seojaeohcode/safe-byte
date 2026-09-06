@@ -8,7 +8,7 @@ services:
     env_file:
       - .env
     environment:
-      ENABLE_DOCS: "false"
+      ENABLE_DOCS: "${ENABLE_DOCS:-false}"
       SAFEBYTE_SQLITE_PATH: /app/data/safe_byte.sqlite3
       RISK_RULES_PATH: /app/data/risk_rules.json
       MFDS_CONFIG_PATH: /app/config/mfds_public_apis.json

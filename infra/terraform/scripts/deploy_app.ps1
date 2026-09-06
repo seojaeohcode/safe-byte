@@ -3,7 +3,8 @@ param(
     [string]$SshKeyPath = "$env:USERPROFILE/.ssh/safebyte_ed25519",
     [ValidateRange(0,1000)][int]$OcrDailyLimit = 50,
     [switch]$EnablePaidOcr,
-    [string]$PublicDomain = ""
+    [string]$PublicDomain = "",
+    [switch]$EnableDocs
 )
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot '../../..')
@@ -14,5 +15,6 @@ if (-not $HostIp) {
 $deployArgs = @((Join-Path $ProjectRoot 'scripts/deploy_application.py'), '--host', $HostIp, '--key', $SshKeyPath, '--daily-limit', $OcrDailyLimit)
 if ($EnablePaidOcr) { $deployArgs += '--paid' }
 if ($PublicDomain) { $deployArgs += @('--domain', $PublicDomain) }
+if ($EnableDocs) { $deployArgs += '--docs' }
 & python @deployArgs
 if ($LASTEXITCODE -ne 0) { throw 'Application deployment failed' }

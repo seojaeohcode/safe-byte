@@ -23,6 +23,7 @@ def main():
     p.add_argument('--daily-limit', type=int, default=50)
     p.add_argument('--paid', action='store_true')
     p.add_argument('--domain', default='')
+    p.add_argument('--docs', action='store_true', help='Serve /docs and /openapi.json on the deployed server.')
     args = p.parse_args()
     ipaddress.ip_address(args.host)
     if not 0 <= args.daily_limit <= 1000:
@@ -33,7 +34,8 @@ def main():
     if not re.match(r'https://[^/]+\.apigw\.ntruss\.com/', env.get('CLOVA_OCR_INVOKE_URL','')) or not env.get('CLOVA_OCR_SECRET_KEY'):
         raise SystemExit('Configure the CLOVA Invoke URL and secret in .env')
     env.update(OCR_PROVIDER='clova', ALLOW_PAID_OCR=str(args.paid).lower(), OCR_DAILY_LIMIT=str(args.daily_limit),
-               HTTP_BIND='0.0.0.0', HTTP_PORT='8080' if args.domain else '80', ENABLE_DOCS='false')
+               HTTP_BIND='0.0.0.0', HTTP_PORT='8080' if args.domain else '80',
+               ENABLE_DOCS=str(args.docs).lower())
     for key in ['APP_UID','APP_GID','COMPOSE_FILE','SAFEBYTE_DOMAIN']:
         env.pop(key,None)
     if args.domain:

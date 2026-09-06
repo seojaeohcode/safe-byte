@@ -29,6 +29,12 @@ variable "allow_paid_ocr" {
   default     = false
 }
 
+variable "enable_docs" {
+  description = "Serve Swagger UI at /docs on the deployed server. Publishes the full API surface."
+  type        = bool
+  default     = false
+}
+
 variable "deployment_ssh_key_path" {
   type    = string
   default = "~/.ssh/safebyte_ed25519"
@@ -51,11 +57,11 @@ locals {
 
 resource "terraform_data" "application" {
   count            = var.deploy_application ? 1 : 0
-  triggers_replace = [ncloud_server.app.id, local.application_revision, var.ocr_daily_limit, var.allow_paid_ocr, var.public_domain]
+  triggers_replace = [ncloud_server.app.id, local.application_revision, var.ocr_daily_limit, var.allow_paid_ocr, var.public_domain, var.enable_docs]
 
   provisioner "local-exec" {
     interpreter = ["PowerShell", "-NoProfile", "-NonInteractive", "-Command"]
-    command     = "& $env:SAFEBYTE_DEPLOY_SCRIPT -HostIp $env:SAFEBYTE_DEPLOY_HOST -SshKeyPath $env:SAFEBYTE_DEPLOY_KEY -OcrDailyLimit $env:SAFEBYTE_OCR_LIMIT -PublicDomain $env:SAFEBYTE_PUBLIC_DOMAIN -EnablePaidOcr:([bool]::Parse($env:SAFEBYTE_PAID_OCR))"
+    command     = "& $env:SAFEBYTE_DEPLOY_SCRIPT -HostIp $env:SAFEBYTE_DEPLOY_HOST -SshKeyPath $env:SAFEBYTE_DEPLOY_KEY -OcrDailyLimit $env:SAFEBYTE_OCR_LIMIT -PublicDomain $env:SAFEBYTE_PUBLIC_DOMAIN -EnablePaidOcr:([bool]::Parse($env:SAFEBYTE_PAID_OCR)) -EnableDocs:([bool]::Parse($env:SAFEBYTE_ENABLE_DOCS))"
     environment = {
       SAFEBYTE_DEPLOY_SCRIPT = "${local.source_root}/infra/terraform/scripts/deploy_app.ps1"
       SAFEBYTE_DEPLOY_HOST   = ncloud_public_ip.app.public_ip
@@ -63,6 +69,7 @@ resource "terraform_data" "application" {
       SAFEBYTE_OCR_LIMIT     = tostring(var.ocr_daily_limit)
       SAFEBYTE_PAID_OCR      = tostring(var.allow_paid_ocr)
       SAFEBYTE_PUBLIC_DOMAIN = var.public_domain
+      SAFEBYTE_ENABLE_DOCS   = tostring(var.enable_docs)
     }
   }
 }
