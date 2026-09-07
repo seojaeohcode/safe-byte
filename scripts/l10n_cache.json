@@ -1217,6 +1217,12 @@
   "ja": "名前と検査基準を入力してください。",
   "zh": "请输入名称和检测标准。"
  },
+ "이름과 기준, 결과 언어를 정해주세요.": {
+  "ar": "يرجى تحديد الاسم والمعايير ولغة النتائج.",
+  "en": "Please set the name, criteria, and result language.",
+  "ja": "名前と基準、結果の言語を選択してください。",
+  "zh": "请选择名称、标准和结果语言。"
+ },
  "이름과 식이 기준을 정하고 결과를 읽을 언어를 선택하세요.": {
   "ar": "حدد الاسم ومعايير النظام الغذائي واختر لغة قراءة النتائج.",
   "en": "Please set your name and dietary criteria, and choose a language for the results.",

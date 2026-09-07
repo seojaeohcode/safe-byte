@@ -868,18 +868,16 @@ class _ProfileEditorState extends State<ProfileEditor> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: Text(widget.cart ? t('장보기 기준') : t('가족 기준'))),
+        // No panel: a white slab behind the white criteria cards erased their
+        // edges, the same way it did on the preferences screen.
         body: _WorkspaceList(children: [
-          SurfacePanel(
-              color: Colors.white,
-              borderColor: Colors.transparent,
-              padding: EdgeInsets.zero,
-              child: Column(
+          Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(widget.cart ? t('함께 확인할 장보기 기준') : t('가족에게 맞는 검사 기준'),
                         style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
-                    Text(t('이름과 식이 기준을 정하고 결과를 읽을 언어를 선택하세요.')),
+                    Text(t('이름과 기준, 결과 언어를 정해주세요.')),
                     const SizedBox(height: 18),
                     TextField(
                         controller: _name,
@@ -912,7 +910,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
                           });
                         },
                         child: Text(t('저장'))),
-                  ]))
+                  ])
         ]),
       );
 }
