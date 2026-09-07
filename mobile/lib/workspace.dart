@@ -6,13 +6,6 @@ import 'package:flutter/services.dart';
 import 'main.dart';
 import 'cart_ble.dart';
 
-const languages = {
-  'ko': '한국어',
-  'en': 'English',
-  'ar': 'العربية',
-  'zh': '中文',
-  'ja': '日本語'
-};
 const _paper = Color(0xffffffff);
 const _mutedInk = Color(0xff66727f);
 const _line = Color(0xffdce2ea);
@@ -363,7 +356,6 @@ class WorkspaceScreen extends StatefulWidget {
       this.embedded = false,
       this.onSelected,
       this.initialProfiles,
-      this.initialLanguage = 'ko',
       super.key});
   final SafeByteApi api;
   final String token;
@@ -372,7 +364,6 @@ class WorkspaceScreen extends StatefulWidget {
   final bool embedded;
   final ValueChanged<Map<String, dynamic>>? onSelected;
   final List<String>? initialProfiles;
-  final String initialLanguage;
   @override
   State<WorkspaceScreen> createState() => _WorkspaceScreenState();
 }
@@ -445,7 +436,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           initialProfiles: defaults,
           cart: cart,
           initialName: cart ? t('나의 장보기') : '',
-          initialLanguage: widget.initialLanguage,
         ),
       ),
     );
@@ -474,7 +464,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           initialProfiles: List<String>.from(raw['profiles'] as List),
           cart: false,
           initialName: raw['name'] as String,
-          initialLanguage: raw['language'] as String,
         ),
       ),
     );
@@ -607,7 +596,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 child: _WorkspaceListItem(
                   icon: Icons.groups_rounded,
                   iconColor: const Color(0xff3f6fa3),
-                  title: '${raw['name']} · ${languages[raw['language']]}',
+                  title: '${raw['name']}',
                   subtitle:
                       '${List<String>.from(raw['profiles']).map(profileLabel).join(', ')} · ${tf('최근 사용 {0}', [raw['updated_at'] == null ? t('최근') : _historyDate(raw['updated_at'] as String)])}',
                   onTap: () => _select(Map<String, dynamic>.from(raw)),
@@ -829,12 +818,10 @@ class ProfileEditor extends StatefulWidget {
       {required this.initialProfiles,
       required this.cart,
       this.initialName = '',
-      this.initialLanguage = 'ko',
       super.key});
   final List<String> initialProfiles;
   final bool cart;
   final String initialName;
-  final String initialLanguage;
   @override
   State<ProfileEditor> createState() => _ProfileEditorState();
 }
@@ -842,13 +829,11 @@ class ProfileEditor extends StatefulWidget {
 class _ProfileEditorState extends State<ProfileEditor> {
   final _name = TextEditingController();
   late Set<String> _profiles;
-  String _language = 'ko';
   @override
   void initState() {
     super.initState();
     _profiles = widget.initialProfiles.toSet();
     _name.text = widget.initialName;
-    _language = widget.initialLanguage;
   }
 
   @override
@@ -877,21 +862,13 @@ class _ProfileEditorState extends State<ProfileEditor> {
                     Text(widget.cart ? t('함께 확인할 장보기 기준') : t('가족에게 맞는 검사 기준'),
                         style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: 8),
-                    Text(t('이름과 기준, 결과 언어를 정해주세요.')),
+                    Text(t('이름과 검사 기준을 정해주세요.')),
                     const SizedBox(height: 18),
                     TextField(
                         controller: _name,
                         maxLength: 80,
                         decoration: InputDecoration(labelText: t('이름'))),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                        initialValue: _language,
-                        decoration: InputDecoration(labelText: t('결과 언어')),
-                        items: languages.entries
-                            .map((e) => DropdownMenuItem(
-                                value: e.key, child: Text(e.value)))
-                            .toList(),
-                        onChanged: (v) => setState(() => _language = v!)),
                     const SizedBox(height: 16),
                     ProfileSelector(selected: _profiles, onChanged: _toggle),
                     if (hasAllergySelection(_profiles))
@@ -906,7 +883,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
                           Navigator.pop(context, {
                             'name': _name.text.trim(),
                             'profiles': _profiles.toList(),
-                            'language': _language
+                            'language': appLanguage.code
                           });
                         },
                         child: Text(t('저장'))),
@@ -1283,7 +1260,7 @@ class ResultExtras extends StatelessWidget {
           ? await api!.request('POST', '/api/v1/carts', token!, body: {
               'name': t('나의 장보기'),
               'profiles': result.extra['profiles'],
-              'language': result.extra['translation']?['language'] ?? 'ko',
+              'language': appLanguage.code,
             })
           : selected;
       final current =

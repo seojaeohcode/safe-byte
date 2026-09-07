@@ -13,11 +13,15 @@ class TestApi extends SafeByteApi {
 }
 
 void main() {
-  testWidgets('editing family preserves its name and language', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ProfileEditor(initialProfiles: ['vegan'], cart: false,
-      initialName: '가족 A', initialLanguage: 'ar')));
+  testWidgets('editing family keeps its name and offers no language of its own',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+        home: ProfileEditor(
+            initialProfiles: ['vegan'], cart: false, initialName: '가족 A')));
     expect(find.text('가족 A'), findsOneWidget);
-    expect(find.text('العربية'), findsOneWidget);
+    // Language belongs to the interface now, not to each set of criteria.
+    expect(find.text('결과 언어'), findsNothing);
+    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

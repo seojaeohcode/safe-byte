@@ -38,7 +38,6 @@ const _softLeaf = Color(0xffe9f7f1);
 const _white = Color(0xffffffff);
 const _clear = Color(0x00000000);
 const _scrim = Color(0x99000000);
-const _softShadow = Color(0x11000000);
 const _scanSurface = Color(0xffedf4f2);
 const _facilitySurface = Color(0xffedf3f9);
 const _ingredientSurface = Color(0xfff8f1ea);
@@ -724,7 +723,7 @@ class _HomeScreenState extends State<HomeScreen> {
         profiles: _scanContext == null
             ? widget.user.profiles
             : List<String>.from(_scanContext!['profiles']),
-        language: _scanContext?['language'] as String? ?? 'ko',
+        language: appLanguage.code,
       );
       if (_scanContext?['cart_id'] != null) {
         try {
@@ -853,8 +852,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 initialTab: _section == 1 ? 1 : 2,
                 embedded: true,
                 onSelected: _selectScanContext,
-                initialProfiles: _scanContext == null ? null : profiles,
-                initialLanguage: _scanContext?['language'] as String? ?? 'ko')
+                initialProfiles: _scanContext == null ? null : profiles)
             : SafeArea(
                 child: Center(
                     child: ConstrainedBox(

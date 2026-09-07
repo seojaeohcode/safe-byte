@@ -1175,6 +1175,12 @@
   "ja": "肉",
   "zh": "肉类"
  },
+ "이 기준으로 검사한 결과 문구가 이 언어로 나옵니다. 앱 화면 언어는 내 정보 → 언어에서 바꿔요.": {
+  "ar": "يظهر نص نتيجة الفحص بهذه اللغة. يمكنك تغيير لغة شاشة التطبيق في معلوماتي → اللغة.",
+  "en": "The result message based on this standard appears in this language. You can change the app screen language in My Information → Language.",
+  "ja": "この基準で検査した結果がこの言語で表示されます。アプリの画面言語は「マイ情報」→「言語」で変更してください。",
+  "zh": "根据此标准检查的结果文本将以该语言显示。可以在‘我的信息’→‘语言’中更改应用程序界面语言。"
+ },
  "이 기준으로 새 장보기": {
   "ar": "تسوق جديد بناءً على هذه المعايير",
   "en": "New Shopping with This Criteria",
@@ -1216,6 +1222,12 @@
   "en": "Please enter your name and inspection criteria.",
   "ja": "名前と検査基準を入力してください。",
   "zh": "请输入名称和检测标准。"
+ },
+ "이름과 검사 기준을 정해주세요.": {
+  "ar": "يرجى تحديد الاسم ومعايير الفحص.",
+  "en": "Please set the name and inspection criteria.",
+  "ja": "名前と検査基準を設定してください。",
+  "zh": "请确定名称和检测标准。"
  },
  "이름과 기준, 결과 언어를 정해주세요.": {
   "ar": "يرجى تحديد الاسم والمعايير ولغة النتائج.",
