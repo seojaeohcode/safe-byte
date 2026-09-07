@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The splash artwork's own background colour. -->
+    <color name="splash_background">#FEFEFE</color>
+</resources>

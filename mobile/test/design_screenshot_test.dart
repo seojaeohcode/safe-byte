@@ -24,7 +24,12 @@ void main() {
     expect(find.text('주말 장보기'), findsOneWidget);
     await tester.tap(find.text('기록').last);
     await tester.pumpAndSettle();
-    expect(find.text('아직 분석 기록이 없습니다.'), findsOneWidget);
+    // A generated camera name must never reach the list as-is.
+    expect(find.textContaining('scaled_'), findsNothing);
+    expect(find.text('라벨 사진'), findsOneWidget);
+    expect(find.text('직접 입력한 텍스트'), findsOneWidget);
+    expect(find.text('오설록 롤케이크 라벨'), findsOneWidget);
+    await _capture('history_list.png');
     await tester.tap(find.text('내 정보').last);
     await tester.pumpAndSettle();
     await _capture('my_account.png');
@@ -123,6 +128,59 @@ void main() {
     await _capture('preferences_allergy.png');
   });
 
+  testWidgets('MFDS lookup shows the reference amounts, not just names',
+      (tester) async {
+    await _setPhoneViewport(tester);
+    await tester.pumpWidget(_PreviewShell(
+        child: Scaffold(
+            body: SafeArea(
+                child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: ResultExtras(
+                        result: _previewResult,
+                        api: _PreviewApi(),
+                        token: 'preview'))))));
+    await _settlePreview(tester);
+
+    await tester.tap(find.text('식약처 정보'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '오설록');
+    await tester.tap(find.text('조회'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('오설록그린티롤케이크(화이트)'), findsOneWidget);
+    expect(find.text('열량 308.0kcal'), findsOneWidget);
+    expect(find.text('나트륨 98.0mg'), findsOneWidget);
+    expect(find.text('100g 기준'), findsWidgets);
+    expect(tester.takeException(), isNull);
+    await _capture('reference_nutrition.png');
+  });
+
+  testWidgets('splash shows the artwork and holds it for three seconds',
+      (tester) async {
+    await _setPhoneViewport(tester);
+    await tester.pumpWidget(const SafeByteApp());
+    await tester.pump();
+
+    expect(find.byType(SplashScreen), findsOneWidget);
+    await tester.runAsync(() => precacheImage(
+        const AssetImage('assets/splash.png'),
+        tester.element(find.byType(SplashScreen))));
+    await tester.pump();
+    await expectLater(find.byType(SplashScreen),
+        matchesGoldenFile('design_review/splash.png'));
+
+    // Session restore finishes at once with no stored token, so anything still
+    // on screen after two seconds is the deliberate hold.
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.byType(SplashScreen), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.byType(SplashScreen), findsNothing);
+    expect(find.byType(AuthScreen), findsOneWidget);
+  });
+
   testWidgets('capture result screen', (tester) async {
     await _setPhoneViewport(tester);
     await tester.pumpWidget(
@@ -218,6 +276,33 @@ const _previewResult = AnalysisResult(
   ],
 );
 
+/// A camera file name as image_picker actually produces it, plus a text analysis,
+/// so the history capture shows what the list does with both.
+const historyRows = [
+  {
+    'request_id': 'preview-001',
+    'source_name':
+        'scaled_026bc63a-de71-4a34-bce5-fc39a0ffa9141191473233696622227.jpg',
+    'status': 'completed',
+    'final_level': 'SAFE',
+    'created_at': '2026-09-07T10:20:00+00:00',
+  },
+  {
+    'request_id': 'preview-002',
+    'source_name': 'direct_text',
+    'status': 'completed',
+    'final_level': 'DANGER',
+    'created_at': '2026-09-07T09:05:00+00:00',
+  },
+  {
+    'request_id': 'preview-003',
+    'source_name': '오설록 롤케이크 라벨.jpg',
+    'status': 'completed',
+    'final_level': 'CAUTION',
+    'created_at': '2026-09-06T18:40:00+00:00',
+  },
+];
+
 class _PreviewApi extends SafeByteApi {
   _PreviewApi() : super('http://preview.local');
   final paths = <String>[];
@@ -226,7 +311,52 @@ class _PreviewApi extends SafeByteApi {
   Future<Map<String, dynamic>> request(String method, String path, String token, {Map<String, dynamic>? body}) async {
     paths.add(path);
     if (path == '/api/v1/family') return {'profiles': []};
-    if (path == '/api/v1/history') return {'analyses': []};
+    if (path == '/api/v1/history') {
+      return {
+        'analyses': historyRows,
+      };
+    }
+    if (path == '/api/v1/references/search') {
+      return {
+        'source': 'MFDS',
+        'kind': 'nutrition',
+        'query': '오설록',
+        'status': 'found',
+        'note': '식약처 식품영양성분 DB의 참고값입니다. 같은 이름이라도 제조사와 기준량이 다르면 값이 다릅니다. 실제 라벨 표시를 우선하세요.',
+        'items': [
+          {
+            'name': '오설록그린티롤케이크(화이트)',
+            'manufacturer': '플레이버랩주식회사',
+            'category': '빵류',
+            'serving_size': '100g',
+            'updated_at': '2026-05-07',
+            'nutrients': [
+              {'key': 'energy_kcal', 'label': '열량', 'unit': 'kcal', 'value': 308.0},
+              {'key': 'protein_g', 'label': '단백질', 'unit': 'g', 'value': 8.5},
+              {'key': 'fat_g', 'label': '지방', 'unit': 'g', 'value': 18.25},
+              {'key': 'carbohydrate_g', 'label': '탄수화물', 'unit': 'g', 'value': 27.25},
+              {'key': 'sugars_g', 'label': '당류', 'unit': 'g', 'value': 21.75},
+              {'key': 'sodium_mg', 'label': '나트륨', 'unit': 'mg', 'value': 98.0},
+              {'key': 'cholesterol_mg', 'label': '콜레스테롤', 'unit': 'mg', 'value': 206.25},
+              {'key': 'saturated_fat_g', 'label': '포화지방', 'unit': 'g', 'value': 9.25},
+              {'key': 'trans_fat_g', 'label': '트랜스지방', 'unit': 'g', 'value': 0.35},
+            ],
+          },
+          {
+            'name': '오설록 가루녹차',
+            'manufacturer': '(주)오설록농장',
+            'category': '다류',
+            'serving_size': '100g',
+            'updated_at': '2026-05-07',
+            'nutrients': [
+              {'key': 'energy_kcal', 'label': '열량', 'unit': 'kcal', 'value': 331.0},
+              {'key': 'protein_g', 'label': '단백질', 'unit': 'g', 'value': 29.6},
+              {'key': 'sodium_mg', 'label': '나트륨', 'unit': 'mg', 'value': 6.0},
+            ],
+          },
+        ],
+      };
+    }
     if (path == '/api/v1/products') return {'products': [{'id': 'product', 'name': '쌀과자', 'category': '과자', 'source_request_id': 'preview'}]};
     if (path == '/api/v1/carts') return {'carts': [{'id': 'preview', 'name': '주말 장보기', 'status': 'active', 'profiles': ['vegan'], 'language': 'ko'}]};
     return {

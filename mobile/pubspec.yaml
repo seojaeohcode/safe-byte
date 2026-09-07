@@ -41,6 +41,7 @@ flutter:
           weight: 400
   assets:
     - assets/app_logo.png
+    - assets/splash.png
     - assets/fonts/OFL.txt
     - assets/fonts/OFL-Arabic.txt
     - assets/fonts/OFL-Roboto.txt

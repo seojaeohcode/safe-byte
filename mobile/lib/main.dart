@@ -228,10 +228,26 @@ class SafeByteApp extends StatefulWidget {
 }
 
 class _SafeByteAppState extends State<SafeByteApp> {
+  // Session restore usually finishes in well under a second, so without a floor
+  // the splash artwork would flash past before it could be read.
+  static const _minimumSplash = Duration(seconds: 3);
+
   final _api = SafeByteApi(kIsWeb ? Uri.base.origin : apiBaseUrl);
+  final _splashStartedAt = DateTime.now();
   AppUser? _user;
   String? _token;
   bool _booting = true;
+
+  Future<void> _leaveSplash(VoidCallback apply) async {
+    final remaining =
+        _minimumSplash - DateTime.now().difference(_splashStartedAt);
+    if (remaining > Duration.zero) await Future<void>.delayed(remaining);
+    if (!mounted) return;
+    setState(() {
+      apply();
+      _booting = false;
+    });
+  }
 
   @override
   void initState() {
@@ -253,19 +269,18 @@ class _SafeByteAppState extends State<SafeByteApp> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('safeByteToken');
     if (token == null) {
-      setState(() => _booting = false);
+      await _leaveSplash(() {});
       return;
     }
     try {
       final user = await _api.me(token);
-      setState(() {
+      await _leaveSplash(() {
         _token = token;
         _user = user;
-        _booting = false;
       });
     } catch (_) {
       await prefs.remove('safeByteToken');
-      setState(() => _booting = false);
+      await _leaveSplash(() {});
     }
   }
 
@@ -340,14 +355,21 @@ class _SafeByteAppState extends State<SafeByteApp> {
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
+  // The artwork's own background, so letterboxing on a taller or wider screen
+  // is invisible and nothing gets cropped.
+  static const _artworkBackground = Color(0xfffefefe);
+
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
+      backgroundColor: _artworkBackground,
       body: Center(
-        child: SizedBox(
-          width: 42,
-          height: 42,
-          child: CircularProgressIndicator(strokeWidth: 3),
+        child: Image(
+          image: AssetImage('assets/splash.png'),
+          fit: BoxFit.contain,
+          width: double.infinity,
+          height: double.infinity,
+          filterQuality: FilterQuality.medium,
         ),
       ),
     );
