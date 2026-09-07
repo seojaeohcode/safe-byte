@@ -86,7 +86,8 @@ rm -f /tmp/safebyte-deploy.tgz
 mkdir -p logs data/selected_ocr_samples
 printf '\nAPP_UID=%s\nAPP_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
 chmod 600 .env
-docker compose up -d --build
+# Force recreate: a rebuilt image is useless while the old container keeps running.
+docker compose up -d --build --force-recreate
 # Recreate the file bind mount: replacing the host config can leave a running
 # container attached to the old inode, even after an nginx reload.
 docker compose up -d --force-recreate nginx

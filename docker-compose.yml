@@ -26,6 +26,9 @@ services:
       - ./data/selected_ocr_samples:/app/data/selected_ocr_samples:ro
       - ./logs:/app/logs
       - ./config:/app/config:ro
+      # Serve the deployed frontend from the host. Baking web/ into the image
+      # only meant a stale Docker layer could keep serving an old Flutter bundle.
+      - ./web:/app/web:ro
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,nodev,size=64m
