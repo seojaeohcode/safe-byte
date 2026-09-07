@@ -391,9 +391,21 @@ Ncloud가 import 시 돌려주지 않는 `fee_system_type_code`는 상태에 직
 ## 7. Flutter 앱
 
 ```powershell
-python scripts/mobile_check.py build apk --debug --dart-define=SAFE_BYTE_API_BASE=http://101.79.20.37
+python scripts/mobile_check.py build apk --release --dart-define=SAFE_BYTE_API_BASE=http://101.79.20.37
 python scripts/mobile_check.py build web --release --base-href=/mobile/ --no-pub
 ```
+
+산출물은 OneDrive 밖 작업 폴더에 생깁니다.
+
+| 산출물 | 경로 |
+|---|---|
+| 빌드 작업 폴더 | `%LOCALAPPDATA%\SafeByte\mobile-work` |
+| APK | `<위 작업 폴더>/build/app/outputs/flutter-apk/app-release.apk` |
+| 웹 | `<위 작업 폴더>/build/web` (배포 시 서버 `/opt/safebyte/web/mobile/`로) |
+
+릴리스 APK는 **디버그 키로 서명**됩니다(`mobile/android/app/build.gradle`). 내부 테스트 배포용이며
+스토어에 올리려면 업로드 키를 만들어 교체해야 합니다. 평문 HTTP 서버에 붙기 위해
+`usesCleartextTraffic="true"`가 켜져 있으므로, HTTPS 도메인을 붙인 뒤에는 끄는 것이 좋습니다.
 
 로컬 백엔드를 볼 때는 `--dart-define=SAFE_BYTE_API_BASE=http://127.0.0.1:8000`,
 USB 연결 실기기에서는 `adb reverse tcp:8080 tcp:8080`을 함께 씁니다.

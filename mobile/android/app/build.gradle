@@ -20,6 +20,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+
+    buildTypes {
+        release {
+            // Debug key, so a release build is installable for internal testing.
+            // Replace with a real upload key before any store submission.
+            signingConfig = signingConfigs.debug
+        }
+    }
 }
 
 kotlin {
