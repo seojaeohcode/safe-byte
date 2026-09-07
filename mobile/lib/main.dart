@@ -1043,6 +1043,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 title: t('가족 기준'),
                                 subtitle: t('가족에게 맞는 성분도 함께 확인해요'),
                                 onTap: () => _openWorkspace()),
+                            const SizedBox(height: 12),
                             _HomeShortcut(
                                 icon: Icons.shopping_bag_outlined,
                                 title: t('장보기 시작'),
@@ -1206,13 +1207,11 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
-                  child: SurfacePanel(
-                    color: _white,
-                    borderColor: _clear,
-                    padding: EdgeInsets.zero,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
+                  // No panel here: a white slab behind white criteria cards
+                  // erased their edges and read as one blank block.
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                         Text(
                           widget.initialSetup ? t('먼저 기준을 정해주세요') : t('먹기 전에 확인할 기준'),
                           style: Theme.of(context).textTheme.headlineSmall,
@@ -1257,8 +1256,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                               : const Icon(Icons.save_outlined),
                           label: Text(t('기준 저장')),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -2087,7 +2085,9 @@ class SurfacePanel extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.color = _paper,
     this.borderColor = _line,
-    this.shadowColor = _softShadow,
+    // Flat by design: stacked cards on the grey canvas had their drop shadows
+    // overlap in the gaps, which read as smudged grey rather than depth.
+    this.shadowColor = _clear,
     super.key,
   });
 

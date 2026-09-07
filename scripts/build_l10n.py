@@ -47,7 +47,7 @@ def is_fragment(value: str) -> bool:
 def collect_ui_strings() -> list[str]:
     found: dict[str, None] = {}
     for path in sorted((ROOT / "mobile/lib").rglob("*.dart")):
-        if path.name.startswith("l10n"):
+        if path.name == "l10n_data.dart":
             continue
         for line in path.read_text(encoding="utf-8").splitlines():
             for match in LITERAL.finditer(line):
@@ -62,7 +62,7 @@ def templates_in_use() -> list[str]:
     found: dict[str, None] = {}
     call = re.compile(r"t\('((?:[^'\\\n]|\\.)*)'\)")
     for path in sorted((ROOT / "mobile/lib").rglob("*.dart")):
-        if path.name.startswith("l10n"):
+        if path.name == "l10n_data.dart":
             continue
         for line in path.read_text(encoding="utf-8").splitlines():
             for match in call.finditer(line):

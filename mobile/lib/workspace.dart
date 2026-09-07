@@ -211,6 +211,67 @@ String _cartVerdict(String level) =>
     }[level] ??
     t('결과 확인');
 
+class _ReferenceItem extends StatelessWidget {
+  const _ReferenceItem({required this.item});
+
+  final Map item;
+
+  @override
+  Widget build(BuildContext context) {
+    final nutrients = (item['nutrients'] as List?) ?? const [];
+    final meta = [item['manufacturer'], item['category'], item['updated_at']]
+        .where((v) => v != null && v != '')
+        .join(' · ');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${item['name']}',
+            style: Theme.of(context).textTheme.titleMedium),
+        if (meta.isNotEmpty)
+          Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(meta,
+                  style: const TextStyle(color: _mutedInk, fontSize: 12))),
+        if (nutrients.isEmpty)
+          Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(t('이 항목에는 영양성분 값이 없습니다.'),
+                  style: const TextStyle(color: _mutedInk, fontSize: 12)))
+        else ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 6),
+            child: Text(
+                tf('{0} 기준', [item['serving_size'] ?? t('표시된 기준량')]),
+                style: const TextStyle(
+                    color: _mutedInk, fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final n in nutrients)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                      color: _paper,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _line)),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Text("${n['label']} ${n['value']}${n['unit']}",
+                        style: const TextStyle(fontSize: 12)),
+                  ),
+                ),
+            ],
+          ),
+        ],
+        const Padding(
+            padding: EdgeInsets.only(top: 10), child: Divider(height: 1)),
+      ]),
+    );
+  }
+}
+
 String _historyDate(String value) {
   final date = DateTime.tryParse(value)?.toLocal();
   if (date == null) return value;
@@ -267,22 +328,28 @@ class _NutritionSummary extends StatelessWidget {
     return SurfacePanel(
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(t('확인한 영양성분'), style: Theme.of(context).textTheme.titleLarge),
+      Text(t('장바구니 영양성분 합계'),
+          style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 8),
-      if (totals.isEmpty) Text(t('상품을 눌러 라벨의 영양성분을 확인하면 합계를 볼 수 있어요.')),
-      for (final entry in totals.entries)
-        Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(children: [
-              Expanded(
-                  child: Text(
-                      tf('{0} · {1}개 기준', [labels[entry.key] ?? entry.key, data['covered_quantity'][entry.key]]))),
-              Text(
-                  '${entry.value} ${entry.key == 'energy_kcal' ? 'kcal' : entry.key == 'sodium_mg' ? 'mg' : 'g'}'),
-            ])),
-      const SizedBox(height: 8),
-      Text(data['note'] as String,
-          style: Theme.of(context).textTheme.bodySmall),
+      if (totals.isEmpty)
+        Text(t('상품을 눌러 라벨에 적힌 영양성분을 입력하면, 담은 수량만큼 더해서 보여드려요.'))
+      else ...[
+        for (final entry in totals.entries)
+          Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(children: [
+                Expanded(
+                    child: Text(tf('{0} · {1}개분', [
+                      labels[entry.key] ?? entry.key,
+                      data['covered_quantity'][entry.key]
+                    ]))),
+                Text(
+                    '${entry.value} ${entry.key == 'energy_kcal' ? 'kcal' : entry.key == 'sodium_mg' ? 'mg' : 'g'}'),
+              ])),
+        const SizedBox(height: 8),
+        Text(data['note'] as String,
+            style: Theme.of(context).textTheme.bodySmall),
+      ],
     ]));
   }
 }
@@ -651,7 +718,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                 child: _WorkspaceListItem(
                   icon: _resultIcon(raw),
                   iconColor: _finalLevelColor(raw),
-                  title: raw['source_name'] as String? ?? t('라벨'),
+                  title: analysisLabel(raw['source_name'] as String?),
                   subtitle: _historyDate(raw['created_at'] as String),
                   onTap: () async {
                     if (raw['status'] == 'completed') {
@@ -954,12 +1021,12 @@ class _CartScreenState extends State<CartScreen> {
       final values = await showDialog<Map<String, dynamic>>(
           context: context,
           builder: (ctx) => AlertDialog(
-                title: Text(t('상품 1개 전체 기준 확인')),
+                title: Text(t('이 상품 1개의 영양성분')),
                 content: SingleChildScrollView(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(t('100g당·1회분 표시라면 상품 전체 양으로 환산하세요. 모르는 값은 비워두세요.')),
+                  Text(t('라벨이 100g당이나 1회분으로 적혀 있으면, 상품 한 개 전체 양으로 바꿔서 넣어주세요. 모르는 항목은 비워두면 합계에서 빠집니다.')),
                   const SizedBox(height: 12),
-                  Text(t('사진에서 읽은 값 · 아직 확인하지 않았어요')),
+                  Text(t('사진에서 읽은 값입니다. 라벨과 맞는지 확인하고 직접 입력해 주세요.')),
                   for (final entry
                       in ((item['nutrition_candidate']?['values'] as Map?) ??
                               {})
@@ -1287,7 +1354,7 @@ class ResultExtras extends StatelessWidget {
       await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-                title: Text(t('공공 DB 참고 결과')),
+                title: Text(t('식약처 영양성분 참고값')),
                 content: SizedBox(
                     width: 360,
                     child: SingleChildScrollView(
@@ -1297,14 +1364,7 @@ class ResultExtras extends StatelessWidget {
                       if ((data['items'] as List).isEmpty)
                         Text(tf('조회 상태: {0}', [data['status']])),
                       for (final item in data['items'] as List)
-                        ListTile(
-                            title: Text(item['name'] as String),
-                            subtitle: Text([
-                              item['english_name'],
-                              item['manufacturer'],
-                              item['serving_size'],
-                              item['updated_at']
-                            ].where((v) => v != null && v != '').join(' · '))),
+                        _ReferenceItem(item: item as Map),
                     ]))),
                 actions: [
                   TextButton(

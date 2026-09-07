@@ -11,6 +11,38 @@ from app.core.config import Settings
 from app.core.database import Database
 
 
+# Column codes of the MFDS food nutrition DB (getFoodNtrCpntDbInq02). The keys match
+# the cart nutrition fields so a reference row can be compared with a label directly.
+# Values are stated per the row's SERVING_SIZE, which is 100g for most rows.
+NUTRIENT_COLUMNS = {
+    "AMT_NUM1": ("energy_kcal", "열량", "kcal"),
+    "AMT_NUM3": ("protein_g", "단백질", "g"),
+    "AMT_NUM4": ("fat_g", "지방", "g"),
+    "AMT_NUM6": ("carbohydrate_g", "탄수화물", "g"),
+    "AMT_NUM7": ("sugars_g", "당류", "g"),
+    "AMT_NUM8": ("dietary_fiber_g", "식이섬유", "g"),
+    "AMT_NUM13": ("sodium_mg", "나트륨", "mg"),
+    "AMT_NUM23": ("cholesterol_mg", "콜레스테롤", "mg"),
+    "AMT_NUM24": ("saturated_fat_g", "포화지방", "g"),
+    "AMT_NUM25": ("trans_fat_g", "트랜스지방", "g"),
+}
+
+
+def parse_nutrients(row: dict[str, Any]) -> list[dict[str, Any]]:
+    """Reference amounts the row actually carries. Missing columns stay missing."""
+    parsed = []
+    for column, (key, label, unit) in NUTRIENT_COLUMNS.items():
+        raw = str(row.get(column, "")).strip()
+        if not raw:
+            continue
+        try:
+            value = float(raw)
+        except ValueError:
+            continue
+        parsed.append({"key": key, "label": label, "unit": unit, "value": round(value, 2)})
+    return parsed
+
+
 class PublicApiClient:
     def __init__(self, config_path: Path, db: Database, settings: Settings):
         self.config_path = config_path
@@ -30,10 +62,10 @@ class PublicApiClient:
         api = self.config.get('apis', {}).get(api_name, {})
         key = self.config.get('keys', {}).get(api.get('service_key_ref', ''))
         empty = {'source': 'MFDS', 'kind': kind, 'query': name, 'items': [],
-                 'note': '공공 DB 참고 정보입니다. 동일 제품·제조사·기준량을 확인하세요. 인증 판정에는 사용하지 않습니다.'}
+                 'note': '식약처 식품영양성분 DB의 참고값입니다. 같은 이름이라도 제조사와 기준량이 다르면 값이 다릅니다. 실제 라벨 표시를 우선하세요.'}
         if not key or str(key).startswith('YOUR_'):
             return {**empty, 'status': 'not_configured'}
-        cache_key = 'reference:v1:' + hashlib.sha256(f'{kind}:{name}'.encode()).hexdigest()
+        cache_key = 'reference:v2:' + hashlib.sha256(f'{kind}:{name}'.encode()).hexdigest()
         cached = self.db.get_public_cache(cache_key)
         if cached:
             return {**cached, 'cached': True}
@@ -52,7 +84,9 @@ class PublicApiClient:
             rows = [r for r in rows if name.casefold() in str(r.get(field, '')).casefold()]
             items = [{'name': r.get(field), 'english_name': r.get('ORM_STD_NM_ENG'),
                       'manufacturer': r.get('MAKER_NM'), 'serving_size': r.get('SERVING_SIZE'),
-                      'code': r.get('FOOD_CD') or r.get('ORM_STD_CD'), 'updated_at': r.get('UPDATE_DATE')} for r in rows]
+                      'code': r.get('FOOD_CD') or r.get('ORM_STD_CD'), 'updated_at': r.get('UPDATE_DATE'),
+                      'category': r.get('FOOD_CAT3_NM') or r.get('FOOD_REF_NM'),
+                      'nutrients': parse_nutrients(r) if kind == 'nutrition' else []} for r in rows]
             result = {**empty, 'status': 'found' if items else 'no_match', 'items': items,
                       'total_count': data.get('body', {}).get('totalCount'), 'limit': 20}
             self.db.set_public_cache(cache_key, api_name, {'name': name}, result, self.settings.public_api_cache_ttl_seconds)

@@ -141,7 +141,7 @@ class Workspace:
         return {"cart": cart, "items": items, "counts": counts, "final_level": level,
                 "total_quantity": sum(counts.values()), "nutrition": {'status': 'confirmed_partial' if totals else 'not_available',
                 'totals': totals, 'covered_quantity': covered,
-                'note': '사용자가 확인한 상품 전체 기준 × 수량입니다. 누락값은 0으로 간주하지 않으며 실제 섭취량과 다릅니다.'}}
+                'note': '아직 입력하지 않은 상품은 합계에서 빠져 있어요. 라벨을 보고 상품 1개 전체 기준으로 입력해 주세요.'}}
 
     def close_cart(self, user_id, cart_id):
         self.cart(user_id, cart_id)

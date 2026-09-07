@@ -58,6 +58,27 @@ String tf(String korean, List<Object?> values) {
   return text;
 }
 
+/// A readable title for an analysis record.
+///
+/// Camera and gallery files arrive as `scaled_<uuid>.jpg`, which tells the user
+/// nothing, so generated names are replaced with what the record actually is.
+String analysisLabel(String? sourceName) {
+  final raw = (sourceName ?? '').trim();
+  if (raw.isEmpty) return t('라벨 사진');
+  if (raw == 'direct_text') return t('직접 입력한 텍스트');
+  final base = raw.split(RegExp(r'[\\/]')).last;
+  final withoutExtension = base.contains('.')
+      ? base.substring(0, base.lastIndexOf('.'))
+      : base;
+  final generated = RegExp(
+      r'^(scaled_|image_picker|rn_image_picker|IMG_|PXL_|photo|capture)|'
+      r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}|^\d{6,}$');
+  if (generated.hasMatch(withoutExtension)) return t('라벨 사진');
+  return withoutExtension.length > 40
+      ? '${withoutExtension.substring(0, 40)}…'
+      : withoutExtension;
+}
+
 /// Language sheet, reachable before signing in as well as from the account tab.
 Future<void> showLanguagePicker(BuildContext context) {
   return showModalBottomSheet<void>(
