@@ -1,7 +1,7 @@
 param(
     [string]$HostIp,
     [string]$SshKeyPath = "$env:USERPROFILE/.ssh/safebyte_ed25519",
-    [ValidateRange(0,1000)][int]$OcrDailyLimit = 50,
+    [ValidateRange(0,1000)][int]$OcrDailyLimit = 10,
     [switch]$EnablePaidOcr,
     [string]$PublicDomain = "",
     [switch]$EnableDocs

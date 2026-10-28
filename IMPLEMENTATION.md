@@ -31,7 +31,7 @@ python scripts/terraform_run.py apply '-input=false' deployment.tfplan
 
 비밀값만 변경한 경우 Terraform 소스 변경 감지 대상이 아니므로 python scripts/terraform_run.py plan '-replace=terraform_data.application[0]' '-out=deployment.tfplan' 후 해당 계획을 적용해 서버 설정을 갱신합니다.
 
-기본 OCR 한도는 서버 전체 합계 하루 50회입니다. OpenAI 성분 정리와 번역은 각각 하루 100회로 따로 제한합니다. 실패한 유료 요청도 예약한 횟수를 사용하며, 캐시 적중은 횟수를 소모하지 않습니다. 한도를 늘릴 때는 실제 요금과 계정 한도를 확인해야 합니다.
+기본 OCR 한도는 서버 전체 합계 하루 10회입니다. OpenAI 성분 정리와 번역은 각각 하루 100회로 따로 제한합니다. 실패한 유료 요청도 예약한 횟수를 사용하며, 캐시 적중은 횟수를 소모하지 않습니다. 한도를 늘릴 때는 실제 요금과 계정 한도를 확인해야 합니다.
 
 OneDrive 동기화 때문에 상태 쓰기가 실패하여 상태와 플러그인 작업 폴더를 `%LOCALAPPDATA%/SafeByte/<작업경로 해시>/`로 분리했습니다. 이 프로젝트의 Terraform은 **항상 `scripts/terraform_run.py` 또는 `infra/terraform/scripts/tf.ps1`로 실행**하세요. 예전 프로젝트 폴더의 상태는 현재 상태가 아닙니다. 다른 컴퓨터로 이동할 때 현재 상태를 안전하게 이전해야 합니다.
 

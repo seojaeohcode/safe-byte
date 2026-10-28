@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     clova_ocr_secret_key: str | None = None
     ocr_provider: Literal["mock", "clova"] = "mock"
     allow_paid_ocr: bool = False
-    ocr_daily_limit: int = 50
+    ocr_daily_limit: int = 10
     ocr_cache_enabled: bool = True
     ocr_max_image_mb: int = 3
     ocr_max_upload_mb: int = 10

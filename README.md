@@ -55,7 +55,7 @@
 
 ### OCR 한도
 
-- **하루 50회**(서버 전체 합계, UTC 기준 자정 리셋). 사용자별이 아니라 서버 공용입니다.
+- **하루 10회**(서버 전체 합계, UTC 기준 자정 리셋). 사용자별이 아니라 서버 공용입니다.
 - **캐시 적중은 한도를 소모하지 않습니다.** 같은 이미지를 다시 올리면 무료입니다.
 - 실패한 유료 요청도 예약한 1회를 사용합니다. 한도 초과 시 `402`가 돌아옵니다.
 - 남은 횟수는 `GET /health/ocr`의 `daily_limit`, `usage_today`로 확인합니다.
@@ -360,7 +360,7 @@ python scripts/terraform_run.py output
 |---|---|---|
 | `deploy_application` | `true` | 인프라 준비 후 애플리케이션까지 배포 |
 | `allow_paid_ocr` | `true` | 한도 안에서 실제 CLOVA 호출 허용 |
-| `ocr_daily_limit` | `50` | 서버 전체 일일 OCR 호출 한도 (0~1000) |
+| `ocr_daily_limit` | `10` | 서버 전체 일일 OCR 호출 한도 (0~1000) |
 | `public_domain` | `""` | 도메인을 넣으면 Caddy HTTPS로 전환 |
 | `ssh_allowed_cidr` / `web_allowed_cidr` | 배포자 IP / `0.0.0.0/0` | 방화벽(ACG + ufw) 허용 대역 |
 
