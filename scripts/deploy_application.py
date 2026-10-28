@@ -20,7 +20,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--host', required=True)
     p.add_argument('--key', required=True)
-    p.add_argument('--daily-limit', type=int, default=50)
+    p.add_argument('--daily-limit', type=int, default=10)
     p.add_argument('--paid', action='store_true')
     p.add_argument('--domain', default='')
     p.add_argument('--docs', action='store_true', help='Serve /docs and /openapi.json on the deployed server.')

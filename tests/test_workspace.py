@@ -70,18 +70,18 @@ def test_atomic_paid_quota(tmp_path):
 
 
 def test_paid_ocr_stops_at_the_configured_daily_limit(tmp_path):
-    assert Settings(_env_file=None).ocr_daily_limit == 50
+    assert Settings(_env_file=None).ocr_daily_limit == 10
     settings=Settings(_env_file=None, ocr_provider='clova', allow_paid_ocr=True, ocr_cache_enabled=False,
                       clova_ocr_invoke_url='https://example.apigw.ntruss.com/custom/v1/1/x/general',
-                      clova_ocr_secret_key='secret', ocr_daily_limit=50)
+                      clova_ocr_secret_key='secret', ocr_daily_limit=10)
     db=Database(tmp_path/'daily-limit.db')
-    assert sum(db.reserve_usage('clova_ocr', settings.ocr_daily_limit) for _ in range(60))==50
+    assert sum(db.reserve_usage('clova_ocr', settings.ocr_daily_limit) for _ in range(20))==10
     image=PreparedImage(original_hash='hash', bytes=b'jpeg', image_format='jpg', width=64, height=64,
                         original_size_bytes=4, processed_size_bytes=4, compressed=False)
-    # The 51st call must be refused before any request reaches CLOVA.
+    # The 11th call must be refused before any request reaches CLOVA.
     with pytest.raises(CostGuardError):
         OcrService(settings, db).extract_text(image)
-    assert db.get_usage_count('clova_ocr')==50
+    assert db.get_usage_count('clova_ocr')==10
 
 
 def test_clova_preserves_line_breaks():

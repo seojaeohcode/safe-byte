@@ -16,7 +16,7 @@ variable "public_domain" {
 
 variable "ocr_daily_limit" {
   type    = number
-  default = 50
+  default = 10
   validation {
     condition     = var.ocr_daily_limit >= 0 && var.ocr_daily_limit <= 1000
     error_message = "OCR daily limit must be between 0 and 1000."
