@@ -426,22 +426,21 @@ class PairingCodeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: Text(t('카트 연결'))),
+        // The cart has no Bluetooth: the user types this code on the cart's touch screen,
+        // and the cart exchanges it with the server over Wi-Fi.
         bottomNavigationBar: BottomAction(
           child: FilledButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => CartBleScreen(code: code)),
-            ),
-            icon: const Icon(Icons.bluetooth),
-            label: Text(t('Bluetooth로 전송')),
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.check),
+            label: Text(t('입력 완료')),
           ),
         ),
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const SizedBox(height: 32),
+            const SizedBox(height: 8),
             const Center(child: BrandMark(size: 72)),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             Text(
               t('카트에 코드를 입력하세요'),
               textAlign: TextAlign.center,
@@ -453,7 +452,7 @@ class PairingCodeScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(color: _mutedInk),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 28),
             SurfacePanel(
               color: _paperWarm,
               borderColor: _paperWarm,
@@ -479,6 +478,36 @@ class PairingCodeScreen extends StatelessWidget {
               },
               icon: const Icon(Icons.copy_outlined),
               label: Text(t('코드 복사')),
+            ),
+            const SizedBox(height: 16),
+            for (final (i, step) in [
+              '카트 화면에 이 6자리 코드를 입력하세요',
+              '카트의 ‘연결’을 누르세요',
+              '카트에 내 기준이 보이면 연결된 거예요',
+            ].indexed)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 13,
+                      backgroundColor: _paperWarm,
+                      child: Text(
+                        '${i + 1}',
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(t(step))),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 16),
+            Text(
+              t('카트는 Wi-Fi로 서버에 연결돼요. 비밀번호는 카트에 남지 않아요.'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _mutedInk, fontSize: 13),
             ),
           ],
         ),
