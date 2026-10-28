@@ -1,0 +1,5 @@
+kiosk/.edge-profile/
+mobile/test/failures/
+mobile/android/.gradle/
+mobile/android/app/build/
+screenshots/review_*.jpg

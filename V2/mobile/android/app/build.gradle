@@ -1,0 +1,39 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace = "com.safebyte.mobile"
+    compileSdk = flutter.compileSdkVersion
+
+    defaultConfig {
+        applicationId = "com.safebyte.mobile"
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    buildTypes {
+        release {
+            // Debug key, so a release build is installable for internal testing.
+            // Replace with a real upload key before any store submission.
+            signingConfig = signingConfigs.debug
+        }
+    }
+}
+
+kotlin {
+    jvmToolchain(21)
+}
+
+flutter {
+    source = "../.."
+}
